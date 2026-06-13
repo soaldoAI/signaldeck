@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SignalDeck
 
-## Getting Started
+**Privacy-first AI Personal Operations Centre.**
 
-First, run the development server:
+> Don't show me messages. Tell me what matters.
+
+SignalDeck connects to your communication channels (Gmail and Google
+Calendar in Community Edition), understands what's happening with the
+AI provider *you* choose — including fully local Ollama — and delivers
+one calm daily briefing: what's urgent, who needs a reply, what you're
+waiting for, and what you can safely ignore.
+
+It is not another inbox. It is an AI Chief of Staff that runs on your
+own hardware.
+
+## Status
+
+Early development — **Phase 1 of 12** (repository scaffold). See
+[ROADMAP.md](ROADMAP.md) for the build plan and
+[PRODUCT.md](PRODUCT.md) for the product vision.
+
+## Principles
+
+- **Privacy first** — your data stays in your PostgreSQL database, on
+  your machine. With Ollama, nothing ever leaves it.
+- **Local-first** — self-hosted via Docker Compose; no SaaS dependency.
+- **Open core** — Community Edition solves the problem completely.
+  Pro will add channels and team features, never unlock basics.
+
+## Quick start (development)
+
+Prerequisites: Node.js ≥ 20, Docker.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repo-url> signaldeck && cd signaldeck
+cp .env.example .env
+docker compose up -d        # PostgreSQL + Mailpit (dev SMTP)
+npm install
+npx prisma generate
+npm run dev                 # web app on http://localhost:3000
+npm run worker              # background worker (separate terminal)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mailpit catches all outbound mail in development — view it at
+<http://localhost:8025>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+prisma/              Database schema and migrations
+src/app/             Next.js App Router (UI + API routes)
+src/server/          Server-only modules (each has a README)
+  db/                Prisma client
+  ai/                AI provider abstraction        (Phase 3)
+  connectors/        Gmail, Calendar, …             (Phase 4+)
+src/worker/          Background worker process
+docker-compose.yml   Local services
+```
 
-## Learn More
+## Documentation
 
-To learn more about Next.js, take a look at the following resources:
+- [PRODUCT.md](PRODUCT.md) — vision, principles, edition split
+- [ROADMAP.md](ROADMAP.md) — milestones and status
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
+- [SECURITY.md](SECURITY.md) — reporting vulnerabilities
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Community Edition is licensed under [Apache 2.0](LICENSE).

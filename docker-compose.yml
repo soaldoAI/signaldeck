@@ -1,0 +1,31 @@
+name: signaldeck
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: signaldeck
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signaldeck}
+      POSTGRES_DB: signaldeck
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signaldeck"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Local SMTP server for development. Catches all outbound mail
+  # (e.g. daily briefings) and exposes a web UI at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+volumes:
+  postgres-data:
