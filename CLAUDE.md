@@ -55,9 +55,18 @@ If not, simplify or remove it.
 
 ## Workflow
 
-Local services: `docker compose up -d` (Postgres on 5432, Mailpit SMTP
-on 1025 / UI on 8025). App: `npm run dev`. Worker: `npm run worker`.
-Checks before finishing any task: `npm run lint` and `npm run build`.
+One-command run (what users do): `./scripts/start.sh` builds and starts
+the whole stack via Docker, then the wizard runs at localhost:3000.
+
+Local development: `docker compose up -d postgres mailpit` for backing
+services (Postgres 5432, Mailpit SMTP 1025 / UI 8025), then
+`npm run dev` and `npm run worker`. Apply schema changes with
+`npm run db:migrate`. Checks before finishing any task: `npm run lint`,
+`npm test`, and `npm run build`.
+
+Secrets a user configures (AI keys, SMTP password) are set in the wizard
+and stored encrypted via `src/server/settings/` — never in `.env`. The
+only env secret is `ENCRYPTION_KEY`.
 
 At the end of every task: update documentation, suggest the next task,
 identify technical debt, identify future improvements.

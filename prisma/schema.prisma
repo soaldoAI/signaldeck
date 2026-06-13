@@ -1,8 +1,8 @@
 // SignalDeck database schema.
 //
 // Models are added milestone by milestone (see ROADMAP.md).
-// Phase 2 introduces users and setup state; Phase 4+ introduce
-// connectors, messages, and actions.
+// Phase 2 introduces the single admin user, sessions, and settings.
+// Phase 4+ introduce connectors, messages, and actions.
 //
 // The connection URL lives in prisma.config.ts (CLI) and
 // src/server/db/client.ts (runtime), per Prisma 7 conventions.
@@ -14,4 +14,49 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// The administrator of this SignalDeck instance. SignalDeck is
+/// single-tenant and local-first: one instance serves one person, so
+/// there is exactly one User row. Modelled as a table (not a config
+/// value) so sessions and, later, per-user connector ownership have a
+/// stable foreign key.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+
+  @@map("users")
+}
+
+/// A logged-in browser session. The cookie holds an opaque random
+/// token; only its SHA-256 hash is stored here, so a database leak
+/// cannot be used to impersonate the user.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Key-value application settings (AI provider, SMTP, …). A flat store
+/// keeps the schema stable as configuration grows — new settings need
+/// no migration. Secret values (API keys, SMTP password) are encrypted
+/// at rest; `encrypted` records whether `value` is ciphertext. The
+/// typed accessor in src/server/settings/ owns which keys are secret.
+model Setting {
+  key       String   @id
+  value     String
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
 }

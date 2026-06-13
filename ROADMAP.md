@@ -6,7 +6,7 @@ tested, documented code. Status: ✅ done · 🚧 in progress · ⬜ planned.
 | Phase | Milestone                 | Status | Notes                                                        |
 | ----- | ------------------------- | ------ | ------------------------------------------------------------ |
 | 1     | Repository scaffold       | ✅     | Next.js + TS + Prisma + Docker Compose, docs, module layout. |
-| 2     | Authentication & setup wizard | ⬜ | Single-admin local auth; wizard configures AI + SMTP and shows the connector catalogue. Target: install → configured in under 10 minutes. |
+| 2     | Authentication & setup wizard | ✅ | Single-admin local auth (scrypt + DB sessions), encrypted secret store, first-run wizard (account + AI + SMTP + connector catalogue), dashboard shell. One-command Docker deploy. |
 | 3     | AI provider abstraction   | ⬜     | One interface; Anthropic, OpenAI, Ollama implementations.    |
 | 4     | Gmail connector           | ⬜     | One-click OAuth, incremental sync, health states, worker-driven. First sync fast enough for an immediate first brief. |
 | 5     | Google Calendar connector | ⬜     | Events into the same pipeline.                               |

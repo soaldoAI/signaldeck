@@ -1,5 +1,18 @@
 name: signaldeck
 
+# One-command deployment. `./scripts/start.sh` (or `docker compose up -d`
+# once .env exists) brings up the database, mail server, web app, and
+# background worker. Open http://localhost:3000 and follow the wizard.
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://signaldeck:${POSTGRES_PASSWORD:-signaldeck}@postgres:5432/signaldeck
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env (scripts/start.sh generates one)}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  # Bundled Mailpit is reachable as `mailpit` inside the compose network.
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: "1025"
+  SMTP_FROM: ${SMTP_FROM:-SignalDeck <briefing@localhost>}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -18,14 +31,49 @@ services:
       timeout: 5s
       retries: 10
 
-  # Local SMTP server for development. Catches all outbound mail
-  # (e.g. daily briefings) and exposes a web UI at http://localhost:8025.
+  # Local SMTP server. Catches all outbound mail (e.g. daily briefings)
+  # and exposes a web UI at http://localhost:8025.
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
       - "${SMTP_PORT:-1025}:1025"
       - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  # One-shot: applies pending database migrations, then exits. The app and
+  # worker wait for it to finish so they never race an unmigrated schema.
+  migrate:
+    build:
+      context: .
+      target: worker
+    command: ["npm", "run", "db:deploy"]
+    restart: "no"
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: app
+    restart: unless-stopped
+    environment: *app-env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres-data:
