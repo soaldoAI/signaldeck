@@ -43,13 +43,34 @@ Complete and useful on its own — never intentionally crippled.
 
 Pro extends the platform; it never unlocks withheld basics.
 
-- Slack, Teams, LinkedIn, WhatsApp connectors
+- Slack, Teams, LinkedIn, WhatsApp, Telegram, Messenger connectors
+- Briefing delivery to WhatsApp / Telegram (not just email)
 - Voice briefing
 - Mobile
 - CRM integration
 - Team mode
 - Executive assistant
 - Operational Memory Graph
+
+## How the briefing is delivered
+
+Channels (above) are what SignalDeck *reads*. Delivery is *where the
+briefing lands* — a separate concern, designed as its own pluggable
+abstraction so new delivery methods drop in like connectors do.
+
+- **Email is the default**, sent through the user's own mail. Two paths:
+  - **Via your connected Gmail.** Once Gmail is connected (OAuth),
+    SignalDeck can send the briefing through the Gmail API using that
+    same authorisation — **no SMTP setup at all**. This is the goal for
+    the simplest, most non-technical install.
+  - **Via SMTP**, for users who don't connect Gmail or who want a
+    specific mail server. Configured once in the wizard.
+- **Mailpit is development only** — a local inbox that catches outgoing
+  mail so the briefing can be tested without sending anything real. It
+  is never required in production and is not a dependency of the app.
+- **Future Pro: WhatsApp / Telegram delivery.** Get the briefing as a
+  message instead of an email. Telegram is straightforward (bot API);
+  WhatsApp requires the Business API.
 
 ## Connection experience
 
