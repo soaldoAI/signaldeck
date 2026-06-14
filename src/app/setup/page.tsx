@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { isSetupComplete } from "@/server/auth";
 import { getConnectorCatalogue } from "@/server/connectors/registry";
-import { getSmtpConfig } from "@/server/settings";
+import { getAiConfig, getSmtpConfig } from "@/server/settings";
 import { SetupForm } from "./setup-form";
 
 // Reads instance state from the database on every request; never
@@ -17,6 +17,11 @@ export default async function SetupPage() {
   // pre-fills correctly whether running on the host (localhost) or in
   // Docker (the `mailpit` service).
   const smtp = await getSmtpConfig();
+
+  // The Ollama default also comes from the environment: inside Docker it
+  // must point at the host (host.docker.internal), not the container's
+  // own localhost. See OLLAMA_BASE_URL in docker-compose.yml.
+  const ai = await getAiConfig();
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-8 px-6 py-12">
@@ -36,6 +41,7 @@ export default async function SetupPage() {
           port: smtp.port,
           from: smtp.from,
         }}
+        ollamaDefaultUrl={ai.ollamaBaseUrl}
       />
     </main>
   );

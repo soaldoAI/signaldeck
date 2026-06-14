@@ -25,9 +25,11 @@ interface SmtpDefaults {
 export function SetupForm({
   connectors,
   smtpDefaults,
+  ollamaDefaultUrl,
 }: {
   connectors: ConnectorHealth[];
   smtpDefaults: SmtpDefaults;
+  ollamaDefaultUrl: string;
 }) {
   const [state, formAction] = useActionState(completeSetup, emptyFormState);
   const [provider, setProvider] = useState<Provider>("ollama");
@@ -127,10 +129,7 @@ export function SetupForm({
             name="ollamaBaseUrl"
             errors={errors}
           >
-            <Input
-              name="ollamaBaseUrl"
-              defaultValue="http://localhost:11434"
-            />
+            <Input name="ollamaBaseUrl" defaultValue={ollamaDefaultUrl} />
           </Field>
         )}
         <Field

@@ -12,6 +12,15 @@ x-app-env: &app-env
   SMTP_HOST: ${SMTP_HOST:-mailpit}
   SMTP_PORT: "1025"
   SMTP_FROM: ${SMTP_FROM:-SignalDeck <briefing@localhost>}
+  # Ollama runs on the HOST, not in this network. From inside a container,
+  # the host is `host.docker.internal` (mapped via extra_hosts below) — not
+  # localhost, which would resolve to the container itself.
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+
+# Map host.docker.internal → the host gateway. Docker Desktop (macOS/Windows)
+# provides this automatically; the entry makes it work on Linux too.
+x-host-gateway: &host-gateway
+  - "host.docker.internal:host-gateway"
 
 services:
   postgres:
@@ -59,6 +68,7 @@ services:
       target: app
     restart: unless-stopped
     environment: *app-env
+    extra_hosts: *host-gateway
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
@@ -71,6 +81,7 @@ services:
       target: worker
     restart: unless-stopped
     environment: *app-env
+    extra_hosts: *host-gateway
     depends_on:
       migrate:
         condition: service_completed_successfully
