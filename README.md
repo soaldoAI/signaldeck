@@ -90,6 +90,7 @@ credentials at rest (the start script generates it for you). See
 
 - [PRODUCT.md](PRODUCT.md) — vision, principles, edition split
 - [ROADMAP.md](ROADMAP.md) — milestones and status
+- [docs/google-oauth-setup.md](docs/google-oauth-setup.md) — connect Gmail & Calendar (your own Google account)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
 - [SECURITY.md](SECURITY.md) — reporting vulnerabilities
 
