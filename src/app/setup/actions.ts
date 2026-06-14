@@ -35,8 +35,10 @@ export async function completeSetup(
     await saveAiConfig({
       provider: data.aiProvider,
       model: data.aiModel,
-      anthropicApiKey: data.anthropicApiKey,
-      openaiApiKey: data.openaiApiKey,
+      // Persist only the credential for the chosen provider, so a key the
+      // user isn't using is never stored (privacy: store the minimum).
+      anthropicApiKey: data.aiProvider === "anthropic" ? data.anthropicApiKey : "",
+      openaiApiKey: data.aiProvider === "openai" ? data.openaiApiKey : "",
       ollamaBaseUrl: data.ollamaBaseUrl,
     });
     await saveSmtpConfig({

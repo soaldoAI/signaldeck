@@ -5,6 +5,9 @@ FROM node:22-alpine AS base
 WORKDIR /app
 # Prisma needs OpenSSL; Alpine is otherwise minimal.
 RUN apk add --no-cache openssl
+# Privacy-first: no Next.js phone-home at build or runtime. Inherited by
+# every downstream stage.
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # --- Dependencies ---------------------------------------------------------
 FROM base AS deps

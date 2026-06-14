@@ -37,6 +37,9 @@ yarn-error.log*
 # local tooling
 .qodo/
 
+# personal Claude settings (machine-local; never commit)
+.claude/settings.local.json
+
 # prisma generated client (npm run db:generate)
 /src/generated/
 
