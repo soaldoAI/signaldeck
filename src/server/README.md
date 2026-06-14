@@ -12,7 +12,7 @@ Server-side code. Nothing here may be imported from client components.
 | `delivery/`   | 9     | Pluggable briefing delivery (Gmail/SMTP/Telegram).|
 | `validation.ts` | 2   | Zod schemas at the form/action trust boundary.   |
 | `connectors/` | 2–6   | Connector registry, contract, normalisation.     |
-| `ai/`         | 3     | Provider abstraction (Anthropic/OpenAI/Ollama).  |
+| `ai/`         | 3     | Provider abstraction (Anthropic/OpenAI/Ollama). ✅ |
 
 ## `server-only` vs shared services
 

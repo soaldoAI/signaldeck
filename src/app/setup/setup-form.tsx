@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { Field, Input, SubmitButton } from "@/app/_components/ui";
 import { emptyFormState } from "@/app/_lib/form-state";
 import type { ConnectorHealth } from "@/server/connectors/types";
+import type { TestResult } from "@/server/ai";
 import { completeSetup } from "./actions";
+import { testAiConnection } from "./ai-actions";
 
 type Provider = "anthropic" | "openai" | "ollama";
 
@@ -29,10 +31,30 @@ export function SetupForm({
 }) {
   const [state, formAction] = useActionState(completeSetup, emptyFormState);
   const [provider, setProvider] = useState<Provider>("ollama");
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [testing, startTest] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
   const errors = state.fieldErrors;
 
+  function handleTestConnection() {
+    const form = formRef.current;
+    if (!form) return;
+    const data = new FormData(form);
+    setTestResult(null);
+    startTest(async () => {
+      const result = await testAiConnection({
+        provider: String(data.get("aiProvider") ?? ""),
+        model: String(data.get("aiModel") ?? ""),
+        anthropicApiKey: String(data.get("anthropicApiKey") ?? ""),
+        openaiApiKey: String(data.get("openaiApiKey") ?? ""),
+        ollamaBaseUrl: String(data.get("ollamaBaseUrl") ?? ""),
+      });
+      setTestResult(result);
+    });
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-8">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-8">
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
@@ -119,6 +141,29 @@ export function SetupForm({
         >
           <Input name="aiModel" placeholder="e.g. llama3.1 / claude-… / gpt-…" />
         </Field>
+
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={testing}
+            className="self-start rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition hover:border-accent disabled:opacity-60"
+          >
+            {testing ? "Testing…" : "Test connection"}
+          </button>
+          {testResult && (
+            <p
+              className={`text-sm ${
+                testResult.ok
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {testResult.ok ? "✓ " : "✗ "}
+              {testResult.detail}
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="flex flex-col gap-4">

@@ -7,7 +7,7 @@ tested, documented code. Status: ✅ done · 🚧 in progress · ⬜ planned.
 | ----- | ------------------------- | ------ | ------------------------------------------------------------ |
 | 1     | Repository scaffold       | ✅     | Next.js + TS + Prisma + Docker Compose, docs, module layout. |
 | 2     | Authentication & setup wizard | ✅ | Single-admin local auth (scrypt + DB sessions), encrypted secret store, first-run wizard (account + AI + SMTP + connector catalogue), dashboard shell. One-command Docker deploy. |
-| 3     | AI provider abstraction   | ⬜     | One interface; Anthropic, OpenAI, Ollama implementations.    |
+| 3     | AI provider abstraction   | ✅     | One `AiProvider` interface; fetch-based Anthropic/OpenAI/Ollama (no SDKs). Wizard "test connection" validates the choice with zero token cost. |
 | 4     | Gmail connector           | ⬜     | One-click OAuth, incremental sync, health states, worker-driven. First sync fast enough for an immediate first brief. |
 | 5     | Google Calendar connector | ⬜     | Events into the same pipeline.                               |
 | 6     | Message normalisation     | ⬜     | Unified message model across sources.                        |
