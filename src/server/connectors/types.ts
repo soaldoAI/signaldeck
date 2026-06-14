@@ -36,4 +36,6 @@ export interface ConnectorHealth {
   status: ConnectorStatus;
   /** Human-readable detail, e.g. "Last synced 2 minutes ago". */
   detail: string;
+  /** The connected account label (e.g. email), when connected. */
+  label?: string;
 }

@@ -16,6 +16,10 @@ x-app-env: &app-env
   # the host is `host.docker.internal` (mapped via extra_hosts below) — not
   # localhost, which would resolve to the container itself.
   OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+  # Google OAuth (Gmail/Calendar connectors). The user's own OAuth client —
+  # see docs/google-oauth-setup.md. Supplied via .env; never committed.
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
 
 # Map host.docker.internal → the host gateway. Docker Desktop (macOS/Windows)
 # provides this automatically; the entry makes it work on Linux too.

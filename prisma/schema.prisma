@@ -28,6 +28,7 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   sessions     Session[]
+  accounts     ConnectorAccount[]
 
   @@map("users")
 }
@@ -59,4 +60,54 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+/// A connected external account (Gmail, Google Calendar, …). OAuth tokens
+/// are stored encrypted at rest (the connector code en/decrypts them). One
+/// row per (user, connector). `status`/`detail` drive the dashboard health
+/// indicator; `cursor` tracks incremental sync position.
+model ConnectorAccount {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectorId  String // "gmail", "google_calendar", …
+  externalId   String // provider account id (e.g. Google sub)
+  label        String // shown in the UI, e.g. the email address
+  status       String    @default("connected") // connected | needs_attention | disconnected
+  detail       String    @default("")
+  accessToken  String // encrypted
+  refreshToken String // encrypted
+  tokenExpiry  DateTime?
+  scope        String    @default("")
+  cursor       String? // incremental sync position (e.g. latest message timestamp)
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  messages     Message[]
+
+  @@unique([userId, connectorId])
+  @@index([userId])
+  @@map("connector_accounts")
+}
+
+/// A normalised message pulled from a connector. The unified cross-source
+/// model is finalised in Phase 6; this is the first cut, populated by the
+/// Gmail connector. Deduplicated per account by provider message id.
+model Message {
+  id          String           @id @default(cuid())
+  accountId   String
+  account     ConnectorAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  connectorId String // denormalised source for cross-account queries
+  externalId  String // provider message id
+  threadId    String?
+  fromName    String           @default("")
+  fromEmail   String           @default("")
+  subject     String           @default("")
+  snippet     String           @default("")
+  receivedAt  DateTime
+  createdAt   DateTime         @default(now())
+
+  @@unique([accountId, externalId])
+  @@index([accountId, receivedAt])
+  @@map("messages")
 }

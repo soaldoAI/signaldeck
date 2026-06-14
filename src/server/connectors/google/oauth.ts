@@ -1,0 +1,131 @@
+// Google OAuth 2.0 — authorization-code flow for connecting the user's own
+// Google account. No SDK: plain fetch against Google's documented endpoints.
+// Shared by the app (connect/callback routes) and the worker (token refresh
+// during sync), so this carries no `server-only` or `next/*` import.
+
+const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
+const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+const USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v2/userinfo";
+
+// Phase 4 requests only what it uses (least privilege). Later phases add
+// calendar.readonly / gmail.send via incremental auth (include_granted_scopes).
+export const GMAIL_SCOPES = [
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/gmail.readonly",
+];
+
+export interface GoogleTokens {
+  accessToken: string;
+  /** Absent on refresh responses; Google only returns it on first consent. */
+  refreshToken?: string;
+  /** Seconds until the access token expires. */
+  expiresIn: number;
+  scope: string;
+}
+
+function clientCredentials(): { clientId: string; clientSecret: string } {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and " +
+        "GOOGLE_CLIENT_SECRET (see docs/google-oauth-setup.md).",
+    );
+  }
+  return { clientId, clientSecret };
+}
+
+export function isGoogleConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+/** Redirect URI must match exactly what's registered in Google Cloud. */
+export function googleRedirectUri(): string {
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  return `${appUrl.replace(/\/+$/, "")}/api/connectors/google/callback`;
+}
+
+/** Build the Google consent URL to redirect the user to. */
+export function buildAuthUrl(options: { state: string; scopes?: string[] }): string {
+  const { clientId } = clientCredentials();
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: googleRedirectUri(),
+    response_type: "code",
+    scope: (options.scopes ?? GMAIL_SCOPES).join(" "),
+    access_type: "offline", // ask for a refresh token
+    prompt: "consent", // force a refresh token on re-connect
+    include_granted_scopes: "true", // incremental auth across phases
+    state: options.state,
+  });
+  return `${AUTH_ENDPOINT}?${params.toString()}`;
+}
+
+interface GoogleTokenResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  scope?: string;
+  error?: string;
+  error_description?: string;
+}
+
+async function postToken(body: URLSearchParams): Promise<GoogleTokens> {
+  const response = await fetch(TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const data = (await response.json()) as GoogleTokenResponse;
+  if (!response.ok || !data.access_token) {
+    throw new Error(
+      `Google token exchange failed: ${data.error_description ?? data.error ?? response.status}`,
+    );
+  }
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresIn: data.expires_in ?? 3600,
+    scope: data.scope ?? "",
+  };
+}
+
+/** Exchange an authorization code (from the callback) for tokens. */
+export function exchangeCode(code: string): Promise<GoogleTokens> {
+  const { clientId, clientSecret } = clientCredentials();
+  return postToken(
+    new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: googleRedirectUri(),
+      grant_type: "authorization_code",
+    }),
+  );
+}
+
+/** Get a fresh access token from a stored refresh token. */
+export function refreshAccessToken(refreshToken: string): Promise<GoogleTokens> {
+  const { clientId, clientSecret } = clientCredentials();
+  return postToken(
+    new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "refresh_token",
+    }),
+  );
+}
+
+/** Look up the connected account's email address, to label it in the UI. */
+export async function fetchUserEmail(accessToken: string): Promise<string> {
+  const response = await fetch(USERINFO_ENDPOINT, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to read Google profile (HTTP ${response.status})`);
+  }
+  const data = (await response.json()) as { email?: string };
+  return data.email ?? "Google account";
+}

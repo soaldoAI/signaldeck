@@ -34,3 +34,17 @@ Every connector implements the same interface:
 
 This is what makes Pro connectors (Slack, Teams, LinkedIn, WhatsApp)
 a pure extension rather than a rewrite.
+
+## Implemented
+
+- **Gmail** (Phase 4) — `gmail/` (client + sync) over `google/oauth.ts`.
+  One-click OAuth against the user's own Google account; tokens stored
+  encrypted via `accounts.ts` (auto-refreshed, `needs_attention` health
+  when re-auth is required). `sync.ts` pulls recent message metadata into
+  the `messages` store, deduped per account; runs inline on connect and on
+  a 5-minute worker schedule. Requires `GOOGLE_CLIENT_ID` /
+  `GOOGLE_CLIENT_SECRET` — see `docs/google-oauth-setup.md`.
+
+Connector account persistence (`accounts.ts`) and the OAuth helper
+(`google/oauth.ts`) are source-agnostic, so Google Calendar (Phase 5)
+reuses both.
