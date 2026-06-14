@@ -26,7 +26,7 @@ export const CONNECTORS: readonly ConnectorDescriptor[] = [
     icon: "📅",
     authMethod: "oauth",
     edition: "community",
-    available: false, // Phase 5
+    available: true, // Phase 5 — connectable
   },
   {
     id: "slack",

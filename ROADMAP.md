@@ -9,7 +9,7 @@ tested, documented code. Status: ✅ done · 🚧 in progress · ⬜ planned.
 | 2     | Authentication & setup wizard | ✅ | Single-admin local auth (scrypt + DB sessions), encrypted secret store, first-run wizard (account + AI + SMTP + connector catalogue), dashboard shell. One-command Docker deploy. |
 | 3     | AI provider abstraction   | ✅     | One `AiProvider` interface; fetch-based Anthropic/OpenAI/Ollama (no SDKs). Wizard "test connection" validates the choice with zero token cost. |
 | 4     | Gmail connector           | ✅     | One-click Google OAuth (your own account), encrypted tokens w/ auto-refresh, worker-driven incremental sync into the unified messages store, dashboard health + recent activity. Immediate first sync on connect. |
-| 5     | Google Calendar connector | ⬜     | Events into the same pipeline.                               |
+| 5     | Google Calendar connector | ✅     | Reuses the Phase 4 OAuth/account layer; per-connector scopes (incremental auth). Worker syncs upcoming events into `calendar_events`; dashboard shows "Coming up". |
 | 6     | Message normalisation     | ⬜     | Unified message model across sources.                        |
 | 7     | AI classification engine  | ⬜     | Urgency, topic, needs-reply, ignorable.                      |
 | 8     | Action extraction         | ⬜     | Concrete next actions, owners, due dates.                    |

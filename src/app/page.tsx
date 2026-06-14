@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 const CONNECT_BANNER: Record<string, { tone: "ok" | "err"; text: string }> = {
   gmail: { tone: "ok", text: "Gmail connected. Your inbox is syncing." },
+  calendar: { tone: "ok", text: "Google Calendar connected. Your schedule is syncing." },
   denied: { tone: "err", text: "Connection cancelled." },
   failed: { tone: "err", text: "Couldn't connect — please try again." },
   unconfigured: {
@@ -35,6 +36,11 @@ export default async function Dashboard({
   });
   const messageCount = await prisma.message.count({
     where: { account: { userId: user.id } },
+  });
+  const upcoming = await prisma.calendarEvent.findMany({
+    where: { account: { userId: user.id }, startsAt: { gte: new Date() } },
+    orderBy: { startsAt: "asc" },
+    take: 6,
   });
 
   return (
@@ -98,6 +104,35 @@ export default async function Dashboard({
         )}
       </section>
 
+      {upcoming.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
+            Coming up
+          </h2>
+          <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+            {upcoming.map((e) => (
+              <li key={e.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{e.title}</p>
+                  {e.location && (
+                    <p className="truncate text-xs text-muted">{e.location}</p>
+                  )}
+                </div>
+                <span className="ml-auto whitespace-nowrap text-xs text-muted">
+                  {e.allDay
+                    ? e.startsAt.toLocaleDateString()
+                    : e.startsAt.toLocaleString([], {
+                        weekday: "short",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
           Channels
@@ -133,7 +168,7 @@ export default async function Dashboard({
                   </span>
                   {descriptor.available ? (
                     <a
-                      href="/api/connectors/google/connect"
+                      href={`/api/connectors/google/connect?connector=${descriptor.id}`}
                       className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:border-accent"
                     >
                       {connected ? "Reconnect" : "Connect"}

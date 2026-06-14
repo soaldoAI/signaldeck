@@ -84,6 +84,7 @@ model ConnectorAccount {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   messages     Message[]
+  events       CalendarEvent[]
 
   @@unique([userId, connectorId])
   @@index([userId])
@@ -110,4 +111,26 @@ model Message {
   @@unique([accountId, externalId])
   @@index([accountId, receivedAt])
   @@map("messages")
+}
+
+/// An upcoming calendar event pulled from a connector (Google Calendar in
+/// Phase 5). Feeds the "what your day requires" half of the briefing.
+/// Deduplicated per account by provider event id.
+model CalendarEvent {
+  id          String           @id @default(cuid())
+  accountId   String
+  account     ConnectorAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  connectorId String
+  externalId  String // provider event id
+  title       String           @default("(no title)")
+  location    String           @default("")
+  organizer   String           @default("")
+  startsAt    DateTime
+  endsAt      DateTime?
+  allDay      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@unique([accountId, externalId])
+  @@index([accountId, startsAt])
+  @@map("calendar_events")
 }

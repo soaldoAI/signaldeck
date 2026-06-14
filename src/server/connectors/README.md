@@ -45,6 +45,12 @@ a pure extension rather than a rewrite.
   a 5-minute worker schedule. Requires `GOOGLE_CLIENT_ID` /
   `GOOGLE_CLIENT_SECRET` — see `docs/google-oauth-setup.md`.
 
+- **Google Calendar** (Phase 5) — `calendar/` (client + sync), reusing the
+  same `google/oauth.ts` and `accounts.ts`. Per-connector scopes
+  (`scopesForConnector`) with incremental auth, so connecting Calendar
+  doesn't drop the Gmail grant. `sync.ts` refreshes the upcoming-events
+  window into `calendar_events`; worker-scheduled like Gmail.
+
 Connector account persistence (`accounts.ts`) and the OAuth helper
-(`google/oauth.ts`) are source-agnostic, so Google Calendar (Phase 5)
-reuses both.
+(`google/oauth.ts`) are source-agnostic — adding the Calendar connector
+required no change to either, which is the contract working as intended.

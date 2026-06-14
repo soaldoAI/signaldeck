@@ -5,6 +5,7 @@
 // briefing generation).
 
 import { syncAllGmail } from "@/server/connectors/gmail/sync";
+import { syncAllCalendars } from "@/server/connectors/calendar/sync";
 
 const SYNC_INTERVAL_MS = 5 * 60_000; // every 5 minutes
 let timer: NodeJS.Timeout | undefined;
@@ -15,6 +16,7 @@ async function tick(): Promise<void> {
   running = true;
   try {
     await syncAllGmail();
+    await syncAllCalendars();
   } catch (error) {
     console.error("[worker] sync tick failed", error);
   } finally {

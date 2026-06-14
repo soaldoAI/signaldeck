@@ -7,13 +7,32 @@ const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-// Phase 4 requests only what it uses (least privilege). Later phases add
-// calendar.readonly / gmail.send via incremental auth (include_granted_scopes).
+// Least-privilege scopes per connector. Each connector requests only what
+// it uses; include_granted_scopes merges grants so connecting a second one
+// doesn't drop the first.
+const EMAIL_SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email"];
+
 export const GMAIL_SCOPES = [
-  "openid",
-  "https://www.googleapis.com/auth/userinfo.email",
+  ...EMAIL_SCOPES,
   "https://www.googleapis.com/auth/gmail.readonly",
 ];
+
+export const CALENDAR_SCOPES = [
+  ...EMAIL_SCOPES,
+  "https://www.googleapis.com/auth/calendar.readonly",
+];
+
+/** Scopes for a given connector id. */
+export function scopesForConnector(connectorId: string): string[] {
+  switch (connectorId) {
+    case "gmail":
+      return GMAIL_SCOPES;
+    case "google_calendar":
+      return CALENDAR_SCOPES;
+    default:
+      return EMAIL_SCOPES;
+  }
+}
 
 export interface GoogleTokens {
   accessToken: string;
