@@ -9,6 +9,7 @@ Server-side code. Nothing here may be imported from client components.
 | `crypto/`     | 2     | AES-256-GCM encryption for secrets at rest.      |
 | `settings/`   | 2     | Typed key-value app configuration store.         |
 | `mail/`       | 2     | SMTP delivery (nodemailer).                       |
+| `delivery/`   | 9     | Pluggable briefing delivery (Gmail/SMTP/Telegram).|
 | `validation.ts` | 2   | Zod schemas at the form/action trust boundary.   |
 | `connectors/` | 2–6   | Connector registry, contract, normalisation.     |
 | `ai/`         | 3     | Provider abstraction (Anthropic/OpenAI/Ollama).  |

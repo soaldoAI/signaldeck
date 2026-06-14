@@ -13,7 +13,7 @@ tested, documented code. Status: ✅ done · 🚧 in progress · ⬜ planned.
 | 6     | Message normalisation     | ⬜     | Unified message model across sources.                        |
 | 7     | AI classification engine  | ⬜     | Urgency, topic, needs-reply, ignorable.                      |
 | 8     | Action extraction         | ⬜     | Concrete next actions, owners, due dates.                    |
-| 9     | Daily briefing email      | ⬜     | The hero feature. SMTP delivery, calm design.                |
+| 9     | Daily briefing & delivery | ⬜     | The hero feature. Pluggable delivery: email via connected Gmail API (no SMTP) → SMTP fallback → Telegram (Community). WhatsApp delivery is Pro. Calm design. |
 | 10    | Dashboard                 | ⬜     | Briefing view, actions, message drill-down.                  |
 | 11    | Testing                   | ⬜     | Hardening pass; tests are also added per-phase.              |
 | 12    | Documentation             | ⬜     | Install, configure, self-host, contribute.                   |

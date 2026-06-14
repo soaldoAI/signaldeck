@@ -32,10 +32,10 @@ Complete and useful on its own — never intentionally crippled.
 - Google Calendar connector
 - Dashboard
 - Daily briefing
+- Briefing delivery: email (via connected Gmail or SMTP) **or Telegram**
 - Action extraction
 - Suggested replies
 - AI via Claude, OpenAI, or Ollama (fully local option)
-- SMTP delivery
 - Docker deployment
 - Local-first, privacy-first architecture
 
@@ -44,7 +44,7 @@ Complete and useful on its own — never intentionally crippled.
 Pro extends the platform; it never unlocks withheld basics.
 
 - Slack, Teams, LinkedIn, WhatsApp, Telegram, Messenger connectors
-- Briefing delivery to WhatsApp / Telegram (not just email)
+- Briefing delivery to WhatsApp
 - Voice briefing
 - Mobile
 - CRM integration
@@ -65,12 +65,14 @@ abstraction so new delivery methods drop in like connectors do.
     the simplest, most non-technical install.
   - **Via SMTP**, for users who don't connect Gmail or who want a
     specific mail server. Configured once in the wizard.
+- **Telegram delivery (Community).** Get the briefing as a Telegram
+  message instead of an email — free and simple via the Telegram bot
+  API, so it ships in Community Edition.
 - **Mailpit is development only** — a local inbox that catches outgoing
   mail so the briefing can be tested without sending anything real. It
   is never required in production and is not a dependency of the app.
-- **Future Pro: WhatsApp / Telegram delivery.** Get the briefing as a
-  message instead of an email. Telegram is straightforward (bot API);
-  WhatsApp requires the Business API.
+- **Future Pro: WhatsApp delivery.** Get the briefing on WhatsApp;
+  requires the paid WhatsApp Business API, so it lands in Pro.
 
 ## Connection experience
 
