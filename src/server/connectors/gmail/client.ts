@@ -39,25 +39,43 @@ async function gmailGet(
 }
 
 /**
- * List ids of recent messages, newest first. `afterEpochSec` limits to
- * messages received after a point (incremental sync); `max` caps the count
- * so the first sync is fast enough to power an immediate briefing.
+ * List ids of recent messages, newest first, following pagination up to
+ * `max`. `afterEpochSec` limits to messages received after a point
+ * (incremental sync); `windowDays` bounds the first sync. The cap keeps a
+ * local model's classification backlog manageable — raise it to ingest
+ * deeper history.
  */
 export async function listRecentMessageIds(
   accessToken: string,
-  options: { afterEpochSec?: number; max?: number } = {},
+  options: { afterEpochSec?: number; max?: number; windowDays?: number } = {},
 ): Promise<string[]> {
-  const max = options.max ?? 50;
+  const max = options.max ?? 100;
   const q = options.afterEpochSec
     ? `after:${options.afterEpochSec}`
-    : "newer_than:7d";
-  const params = new URLSearchParams({ maxResults: String(max), q });
-  const { ok, status, body } = await gmailGet(
-    accessToken,
-    `/messages?${params.toString()}`,
-  );
-  if (!ok) throw new Error(`Gmail list failed (HTTP ${status})`);
-  return ((body as ListResponse).messages ?? []).map((m) => m.id);
+    : `newer_than:${options.windowDays ?? 14}d`;
+
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      maxResults: String(Math.min(100, max - ids.length)),
+      q,
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+
+    const { ok, status, body } = await gmailGet(
+      accessToken,
+      `/messages?${params.toString()}`,
+    );
+    if (!ok) throw new Error(`Gmail list failed (HTTP ${status})`);
+
+    const page = body as ListResponse;
+    for (const m of page.messages ?? []) ids.push(m.id);
+    pageToken = page.nextPageToken;
+  } while (pageToken && ids.length < max);
+
+  return ids.slice(0, max);
 }
 
 /** Fetch metadata (headers + snippet) for one message. */

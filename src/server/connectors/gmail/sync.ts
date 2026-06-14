@@ -25,7 +25,13 @@ export async function syncGmailAccount(
 
   // Cursor is the epoch-seconds of the newest message synced so far.
   const afterEpochSec = account.cursor ? Number(account.cursor) : undefined;
-  const ids = await listRecentMessageIds(accessToken, { afterEpochSec, max: 50 });
+  // First sync: recent two weeks, up to 150 messages (paginated). Then
+  // incremental: everything new since the cursor.
+  const ids = await listRecentMessageIds(accessToken, {
+    afterEpochSec,
+    max: 150,
+    windowDays: 14,
+  });
 
   // Skip ids we already have — avoids a metadata fetch per known message.
   const existing = await prisma.message.findMany({

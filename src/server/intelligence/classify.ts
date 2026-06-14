@@ -1,0 +1,94 @@
+// Classification engine: the AI's read of each message. Runs every
+// not-yet-classified message through the configured provider and stores a
+// MessageInsight. Provider-agnostic (llama3.1, Claude, OpenAI) via the AI
+// abstraction. Shared by the worker — no `server-only` / `next/*` imports.
+
+import { prisma } from "@/server/db/client";
+import { getAiProvider, type AiProvider } from "@/server/ai";
+import { parseInsight, type Insight } from "./parse";
+import type { Message } from "@/generated/prisma/client";
+
+export { CATEGORIES, type Category, type Insight } from "./parse";
+
+const SYSTEM_PROMPT = `You are SignalDeck, an AI chief of staff for a busy professional.
+For each message, decide how it should be triaged and what (if anything) the user must do.
+
+Reply with ONLY a JSON object, no prose, no markdown fences:
+{
+  "category": one of "needs_reply" | "waiting" | "urgent" | "fyi" | "ignore",
+  "summary": a single short sentence describing what this message is,
+  "action": the one concrete next action the user should take, or "" if none
+}
+
+Category guide:
+- "urgent": time-sensitive and important; needs attention soon.
+- "needs_reply": a real person is waiting on the user's response.
+- "waiting": the user is waiting on someone else; no action needed now.
+- "fyi": worth knowing, but no action required.
+- "ignore": newsletters, promotions, automated notifications, noise.
+
+Keep summary under 15 words. Keep action a short imperative ("Reply to Sarah about the contract") or "".`;
+
+function buildUserPrompt(message: Message): string {
+  return [
+    `From: ${message.fromName || message.fromEmail} <${message.fromEmail}>`,
+    `Subject: ${message.subject}`,
+    `Preview: ${message.snippet}`,
+  ].join("\n");
+}
+
+/** Classify a single message via the given provider. */
+export async function classifyMessage(
+  provider: AiProvider,
+  message: Message,
+): Promise<Insight> {
+  const result = await provider.generate({
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildUserPrompt(message) }],
+    maxTokens: 300,
+  });
+  return parseInsight(result.text);
+}
+
+export interface ClassifyResult {
+  classified: number;
+}
+
+/**
+ * Classify all messages that don't yet have an insight. Runs sequentially
+ * to be gentle on a local model. `limit` bounds one batch so a huge backlog
+ * is chipped away across worker ticks rather than blocking one tick forever.
+ */
+export async function classifyPendingMessages(
+  limit = 25,
+): Promise<ClassifyResult> {
+  const pending = await prisma.message.findMany({
+    where: { insight: null },
+    orderBy: { receivedAt: "desc" },
+    take: limit,
+  });
+  if (pending.length === 0) return { classified: 0 };
+
+  const provider = await getAiProvider();
+  let classified = 0;
+
+  for (const message of pending) {
+    try {
+      const insight = await classifyMessage(provider, message);
+      await prisma.messageInsight.create({
+        data: {
+          messageId: message.id,
+          category: insight.category,
+          summary: insight.summary,
+          action: insight.action,
+          model: provider.model,
+        },
+      });
+      classified += 1;
+    } catch (error) {
+      console.error(`[classify] failed for message ${message.id}`, error);
+      // Leave it unclassified; the next tick retries it.
+    }
+  }
+  return { classified };
+}

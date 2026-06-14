@@ -107,10 +107,33 @@ model Message {
   snippet     String           @default("")
   receivedAt  DateTime
   createdAt   DateTime         @default(now())
+  insight     MessageInsight?
 
   @@unique([accountId, externalId])
   @@index([accountId, receivedAt])
   @@map("messages")
+}
+
+/// The AI's read of a single message — what it is, what (if anything) the
+/// user must do, and how to triage it. Produced by the classification
+/// engine (src/server/intelligence/) via the configured AI provider. One
+/// row per message; absence means "not yet classified".
+model MessageInsight {
+  id        String   @id @default(cuid())
+  messageId String   @unique
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  /// needs_reply | waiting | urgent | fyi | ignore
+  category  String
+  /// One-line plain-language summary of what this message is.
+  summary   String   @default("")
+  /// The concrete next action for the user, or "" if none.
+  action    String   @default("")
+  /// Which AI model produced this, for transparency/debugging.
+  model     String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@map("message_insights")
 }
 
 /// An upcoming calendar event pulled from a connector (Google Calendar in

@@ -10,9 +10,9 @@ tested, documented code. Status: ✅ done · 🚧 in progress · ⬜ planned.
 | 3     | AI provider abstraction   | ✅     | One `AiProvider` interface; fetch-based Anthropic/OpenAI/Ollama (no SDKs). Wizard "test connection" validates the choice with zero token cost. |
 | 4     | Gmail connector           | ✅     | One-click Google OAuth (your own account), encrypted tokens w/ auto-refresh, worker-driven incremental sync into the unified messages store, dashboard health + recent activity. Immediate first sync on connect. |
 | 5     | Google Calendar connector | ✅     | Reuses the Phase 4 OAuth/account layer; per-connector scopes (incremental auth). Worker syncs upcoming events into `calendar_events`; dashboard shows "Coming up". |
-| 6     | Message normalisation     | ⬜     | Unified message model across sources.                        |
-| 7     | AI classification engine  | ⬜     | Urgency, topic, needs-reply, ignorable.                      |
-| 8     | Action extraction         | ⬜     | Concrete next actions, owners, due dates.                    |
+| 6     | Message normalisation     | ✅     | Unified `messages` store across sources (Gmail + Calendar feed one model the brain reads). |
+| 7     | AI classification engine  | ✅     | Per-message triage via the configured provider (llama3.1 default): needs-reply / urgent / waiting / fyi / ignore + one-line summary. Robust parsing for local models; worker-driven, bounded per tick. |
+| 8     | Action extraction         | ✅     | Concrete next action extracted per message in the same pass; surfaced as "What needs you". Owners/due-dates: future. |
 | 9     | Daily briefing & delivery | ⬜     | The hero feature. Pluggable delivery: email via connected Gmail API (no SMTP) → SMTP fallback → Telegram (Community). WhatsApp delivery is Pro. Calm design. |
 | 10    | Dashboard                 | ⬜     | Briefing view, actions, message drill-down.                  |
 | 11    | Testing                   | ⬜     | Hardening pass; tests are also added per-phase.              |

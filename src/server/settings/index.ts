@@ -49,6 +49,18 @@ async function writeMany(values: Record<string, string | undefined>): Promise<vo
   );
 }
 
+// --- General -------------------------------------------------------------
+
+/**
+ * The user's IANA timezone, used to render dates (calendar, briefing) in
+ * local time rather than the server's UTC. Falls back to APP_TIMEZONE then
+ * UTC. Set via the (future) settings UI; seedable meanwhile.
+ */
+export async function getTimezone(): Promise<string> {
+  const s = await readMany(["app.timezone"]);
+  return s.get("app.timezone") || process.env.APP_TIMEZONE || "UTC";
+}
+
 // --- AI provider ----------------------------------------------------------
 
 export type AiProvider = "anthropic" | "openai" | "ollama";

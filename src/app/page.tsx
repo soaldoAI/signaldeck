@@ -1,6 +1,7 @@
 import { requireUser } from "@/server/auth";
 import { getConnectorHealthForUser } from "@/server/connectors/registry";
-import { prisma } from "@/server/db/client";
+import { getBrief, type BriefItem } from "@/server/intelligence/brief";
+import { getTimezone } from "@/server/settings";
 import { StatusDot } from "@/app/_components/status-dot";
 import { logout } from "@/app/login/actions";
 
@@ -17,31 +18,19 @@ const CONNECT_BANNER: Record<string, { tone: "ok" | "err"; text: string }> = {
   },
 };
 
-// The operations centre home. The briefing itself arrives in Phase 9; for
-// now the dashboard shows connection health and recent synced activity —
-// proof the pipeline is alive end to end.
 export default async function Dashboard({
   searchParams,
 }: {
   searchParams: Promise<{ connect?: string }>;
 }) {
   const user = await requireUser();
-  const connectors = await getConnectorHealthForUser(user.id);
+  const [connectors, brief, timezone] = await Promise.all([
+    getConnectorHealthForUser(user.id),
+    getBrief(user.id),
+    getTimezone(),
+  ]);
   const banner = CONNECT_BANNER[(await searchParams).connect ?? ""];
-
-  const recent = await prisma.message.findMany({
-    where: { account: { userId: user.id } },
-    orderBy: { receivedAt: "desc" },
-    take: 8,
-  });
-  const messageCount = await prisma.message.count({
-    where: { account: { userId: user.id } },
-  });
-  const upcoming = await prisma.calendarEvent.findMany({
-    where: { account: { userId: user.id }, startsAt: { gte: new Date() } },
-    orderBy: { startsAt: "asc" },
-    take: 6,
-  });
+  const analysing = brief.totalMessages - brief.classifiedCount;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-10">
@@ -69,48 +58,59 @@ export default async function Dashboard({
         </p>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
-          Today&apos;s brief
-        </h2>
-        {messageCount === 0 ? (
+      <section className="flex flex-col gap-4">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
+            Today&apos;s brief
+          </h2>
+          {analysing > 0 && (
+            <span className="text-xs text-muted">Analysing {analysing}…</span>
+          )}
+        </div>
+
+        {brief.totalMessages === 0 ? (
+          <EmptyBrief />
+        ) : brief.classifiedCount === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
-            <p className="text-base font-medium">No brief yet</p>
+            <p className="text-base font-medium">Reading your inbox…</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-              Connect your first account below and SignalDeck will tell you
-              what needs your attention today.
+              {brief.totalMessages} messages synced. SignalDeck is working
+              through them — your brief appears here shortly.
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted">
-              {messageCount} message{messageCount === 1 ? "" : "s"} synced.
-              Prioritisation arrives in a later update — here&apos;s the latest:
+          <div className="flex flex-col gap-5">
+            {brief.actions.length > 0 && (
+              <BriefGroup title="What needs you" tone="accent">
+                {brief.actions.map((i) => (
+                  <li key={i.id} className="px-4 py-3">
+                    <p className="text-sm font-medium">{i.action}</p>
+                    <p className="truncate text-xs text-muted">
+                      {i.from} · {i.subject}
+                    </p>
+                  </li>
+                ))}
+              </BriefGroup>
+            )}
+            <BriefList title="Needs your reply" items={brief.needsReply} />
+            <BriefList title="Urgent" items={brief.urgent} />
+            <BriefList title="Waiting on others" items={brief.waiting} />
+            <p className="text-xs text-muted">
+              {brief.ignorableCount} message
+              {brief.ignorableCount === 1 ? "" : "s"} you can ignore (newsletters,
+              notifications).
             </p>
-            <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-              {recent.map((m) => (
-                <li key={m.id} className="flex flex-col gap-0.5 px-4 py-3">
-                  <p className="truncate text-sm font-medium">
-                    {m.subject || "(no subject)"}
-                  </p>
-                  <p className="truncate text-xs text-muted">
-                    {m.fromName || m.fromEmail} ·{" "}
-                    {m.receivedAt.toLocaleDateString()}
-                  </p>
-                </li>
-              ))}
-            </ul>
           </div>
         )}
       </section>
 
-      {upcoming.length > 0 && (
+      {brief.events.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
             Coming up
           </h2>
           <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-            {upcoming.map((e) => (
+            {brief.events.map((e) => (
               <li key={e.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{e.title}</p>
@@ -119,13 +119,7 @@ export default async function Dashboard({
                   )}
                 </div>
                 <span className="ml-auto whitespace-nowrap text-xs text-muted">
-                  {e.allDay
-                    ? e.startsAt.toLocaleDateString()
-                    : e.startsAt.toLocaleString([], {
-                        weekday: "short",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
+                  {formatEventTime(e.startsAt, e.allDay, timezone)}
                 </span>
               </li>
             ))}
@@ -190,4 +184,70 @@ export default async function Dashboard({
       </section>
     </main>
   );
+}
+
+function BriefList({ title, items }: { title: string; items: BriefItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <BriefGroup title={title}>
+      {items.map((i) => (
+        <li key={i.id} className="px-4 py-3">
+          <p className="truncate text-sm font-medium">{i.subject}</p>
+          <p className="truncate text-xs text-muted">
+            {i.from}
+            {i.summary ? ` · ${i.summary}` : ""}
+          </p>
+        </li>
+      ))}
+    </BriefGroup>
+  );
+}
+
+function BriefGroup({
+  title,
+  tone,
+  children,
+}: {
+  title: string;
+  tone?: "accent";
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3
+        className={`text-xs font-semibold uppercase tracking-wide ${
+          tone === "accent" ? "text-accent" : "text-muted"
+        }`}
+      >
+        {title}
+      </h3>
+      <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        {children}
+      </ul>
+    </div>
+  );
+}
+
+function EmptyBrief() {
+  return (
+    <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+      <p className="text-base font-medium">No brief yet</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+        Connect your first account below and SignalDeck will tell you what
+        needs your attention today.
+      </p>
+    </div>
+  );
+}
+
+function formatEventTime(date: Date, allDay: boolean, timezone: string): string {
+  if (allDay) {
+    return date.toLocaleDateString([], { timeZone: timezone, month: "short", day: "numeric" });
+  }
+  return date.toLocaleString([], {
+    timeZone: timezone,
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
