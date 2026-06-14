@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { getSessionUser } from "@/server/auth";
 import { exchangeCode, fetchUserEmail } from "@/server/connectors/google/oauth";
 import { upsertGoogleAccount } from "@/server/connectors/accounts";
@@ -16,23 +15,32 @@ const CONNECTOR_COOKIE = "google_oauth_connector";
 // immediate first sync so the user sees results right away.
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const origin = request.nextUrl.origin;
-  const home = (status: string) =>
-    NextResponse.redirect(new URL(`/?connect=${status}`, origin));
+  const home = (status: string) => {
+    const res = NextResponse.redirect(new URL(`/?connect=${status}`, origin));
+    // Clear the one-time OAuth cookies on the way out.
+    res.cookies.set(STATE_COOKIE, "", { path: "/", maxAge: 0 });
+    res.cookies.set(CONNECTOR_COOKIE, "", { path: "/", maxAge: 0 });
+    return res;
+  };
 
   const user = await getSessionUser();
   if (!user) return NextResponse.redirect(new URL("/login", origin));
 
   const params = request.nextUrl.searchParams;
-  const cookieStore = await cookies();
-  const expectedState = cookieStore.get(STATE_COOKIE)?.value;
-  const connector = cookieStore.get(CONNECTOR_COOKIE)?.value ?? "gmail";
-  cookieStore.delete(STATE_COOKIE);
-  cookieStore.delete(CONNECTOR_COOKIE);
+  // Read straight off the request — the same cookies() quirk that breaks
+  // setting also makes reading via the helper unreliable across the redirect.
+  const expectedState = request.cookies.get(STATE_COOKIE)?.value;
+  const connector = request.cookies.get(CONNECTOR_COOKIE)?.value ?? "gmail";
 
   if (params.get("error")) return home("denied");
   const code = params.get("code");
   const state = params.get("state");
   if (!code || !state || !expectedState || state !== expectedState) {
+    console.error(
+      `[connect] state check failed (hasCode=${Boolean(code)} hasState=${Boolean(
+        state,
+      )} hasCookie=${Boolean(expectedState)} match=${state === expectedState})`,
+    );
     return home("failed");
   }
 

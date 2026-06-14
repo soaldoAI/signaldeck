@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { getSessionUser } from "@/server/auth";
 import {
   buildAuthUrl,
@@ -35,16 +34,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.redirect(
     buildAuthUrl({ state, scopes: scopesForConnector(connector) }),
   );
-  const secure = (process.env.APP_URL ?? "").startsWith("https://");
+  // Set cookies directly on the redirect response — the next/headers
+  // cookies() helper does not reliably attach to a manually-created
+  // NextResponse, which silently breaks the state round-trip.
   const cookieOpts = {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure,
+    secure: (process.env.APP_URL ?? "").startsWith("https://"),
     path: "/",
     maxAge: 600,
   };
-  const store = await cookies();
-  store.set(STATE_COOKIE, state, cookieOpts);
-  store.set(CONNECTOR_COOKIE, connector, cookieOpts);
+  response.cookies.set(STATE_COOKIE, state, cookieOpts);
+  response.cookies.set(CONNECTOR_COOKIE, connector, cookieOpts);
   return response;
 }
