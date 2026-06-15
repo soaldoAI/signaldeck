@@ -11,6 +11,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # --- Dependencies ---------------------------------------------------------
 FROM base AS deps
+# Build toolchain for native optional deps (gramjs → ws → utf-8-validate /
+# bufferutil). Only needed to compile during install; not copied into the
+# runtime images (those copy node_modules, not these apk packages).
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./

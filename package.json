@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "worker": "tsx --env-file-if-exists=.env src/worker/index.ts",
+    "telegram:login": "tsx --env-file-if-exists=.env scripts/telegram-login.mts",
     "test": "vitest run",
     "test:watch": "vitest",
     "postinstall": "prisma generate",
@@ -23,6 +24,7 @@
     "nodemailer": "8.0.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "telegram": "2.26.22",
     "zod": "4.4.3"
   },
   "devDependencies": {

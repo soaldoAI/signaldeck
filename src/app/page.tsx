@@ -164,7 +164,11 @@ export default async function Dashboard({
                   </span>
                   {descriptor.available ? (
                     <a
-                      href={`/api/connectors/google/connect?connector=${descriptor.id}`}
+                      href={
+                        descriptor.id === "telegram"
+                          ? "/connect/telegram"
+                          : `/api/connectors/google/connect?connector=${descriptor.id}`
+                      }
                       className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:border-accent"
                     >
                       {connected ? "Reconnect" : "Connect"}

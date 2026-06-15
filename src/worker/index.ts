@@ -6,6 +6,7 @@
 
 import { syncAllGmail } from "@/server/connectors/gmail/sync";
 import { syncAllCalendars } from "@/server/connectors/calendar/sync";
+import { syncAllTelegram } from "@/server/connectors/telegram/sync";
 import { classifyPendingMessages } from "@/server/intelligence/classify";
 
 const SYNC_INTERVAL_MS = 5 * 60_000; // every 5 minutes
@@ -18,6 +19,7 @@ async function tick(): Promise<void> {
   try {
     await syncAllGmail();
     await syncAllCalendars();
+    await syncAllTelegram();
     // Classify whatever's new (bounded per tick so a big backlog is chipped
     // away rather than blocking one tick on a slow local model).
     const { classified } = await classifyPendingMessages(40);

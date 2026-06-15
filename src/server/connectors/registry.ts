@@ -51,9 +51,9 @@ export const CONNECTORS: readonly ConnectorDescriptor[] = [
     name: "Telegram",
     description: "Stay on top of groups and DMs.",
     icon: "✈️",
-    authMethod: "oauth",
-    edition: "pro",
-    available: false,
+    authMethod: "local_import",
+    edition: "community",
+    available: true, // Phase: Telegram connector (one-time terminal login)
   },
   {
     id: "linkedin",

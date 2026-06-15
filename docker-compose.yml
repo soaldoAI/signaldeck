@@ -20,6 +20,10 @@ x-app-env: &app-env
   # see docs/google-oauth-setup.md. Supplied via .env; never committed.
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  # Telegram connector (the worker needs these to sync a saved session).
+  # See docs/telegram-setup.md.
+  TELEGRAM_API_ID: ${TELEGRAM_API_ID:-}
+  TELEGRAM_API_HASH: ${TELEGRAM_API_HASH:-}
 
 # Map host.docker.internal → the host gateway. Docker Desktop (macOS/Windows)
 # provides this automatically; the entry makes it work on Linux too.

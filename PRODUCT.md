@@ -30,6 +30,7 @@ Complete and useful on its own — never intentionally crippled.
 
 - Gmail connector
 - Google Calendar connector
+- Telegram connector (read your own chats)
 - Dashboard
 - Daily briefing
 - Briefing delivery: email (via connected Gmail or SMTP) **or Telegram**
@@ -43,7 +44,7 @@ Complete and useful on its own — never intentionally crippled.
 
 Pro extends the platform; it never unlocks withheld basics.
 
-- Slack, Teams, LinkedIn, WhatsApp, Telegram, Messenger connectors
+- Slack, Teams, LinkedIn, WhatsApp, Messenger connectors
 - Briefing delivery to WhatsApp
 - Voice briefing
 - Mobile
