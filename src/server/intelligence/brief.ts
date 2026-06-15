@@ -13,6 +13,26 @@ export interface BriefItem {
   summary: string;
   action: string;
   category: Category;
+  /** Deep link to open the original message in its source, or "". */
+  url: string;
+}
+
+/** Build a link that opens the source message directly. */
+function messageUrl(
+  connectorId: string,
+  externalId: string,
+  threadId: string | null,
+  accountLabel: string,
+): string {
+  if (connectorId === "gmail") {
+    // authuser routes to the right account when several Google accounts are
+    // signed into the browser; #all opens the conversation.
+    const id = threadId || externalId;
+    return `https://mail.google.com/mail/?authuser=${encodeURIComponent(
+      accountLabel,
+    )}#all/${id}`;
+  }
+  return "";
 }
 
 export interface BriefEvent {
@@ -42,7 +62,7 @@ export async function getBrief(userId: string): Promise<Brief> {
   const [messages, totalMessages, classifiedCount, events] = await Promise.all([
     prisma.message.findMany({
       where: { ...where, insight: { isNot: null } },
-      include: { insight: true },
+      include: { insight: true, account: true },
       orderBy: { receivedAt: "desc" },
     }),
     prisma.message.count({ where }),
@@ -61,6 +81,7 @@ export async function getBrief(userId: string): Promise<Brief> {
     summary: m.insight?.summary ?? "",
     action: m.insight?.action ?? "",
     category: (m.insight?.category ?? "fyi") as Category,
+    url: messageUrl(m.connectorId, m.externalId, m.threadId, m.account.label),
   });
 
   const items = messages.map(toItem);

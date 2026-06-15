@@ -83,11 +83,13 @@ export default async function Dashboard({
             {brief.actions.length > 0 && (
               <BriefGroup title="What needs you" tone="accent">
                 {brief.actions.map((i) => (
-                  <li key={i.id} className="px-4 py-3">
-                    <p className="text-sm font-medium">{i.action}</p>
-                    <p className="truncate text-xs text-muted">
-                      {i.from} · {i.subject}
-                    </p>
+                  <li key={i.id}>
+                    <ItemLink url={i.url}>
+                      <p className="text-sm font-medium">{i.action}</p>
+                      <p className="truncate text-xs text-muted">
+                        {i.from} · {i.subject}
+                      </p>
+                    </ItemLink>
                   </li>
                 ))}
               </BriefGroup>
@@ -191,15 +193,33 @@ function BriefList({ title, items }: { title: string; items: BriefItem[] }) {
   return (
     <BriefGroup title={title}>
       {items.map((i) => (
-        <li key={i.id} className="px-4 py-3">
-          <p className="truncate text-sm font-medium">{i.subject}</p>
-          <p className="truncate text-xs text-muted">
-            {i.from}
-            {i.summary ? ` · ${i.summary}` : ""}
-          </p>
+        <li key={i.id}>
+          <ItemLink url={i.url}>
+            <p className="truncate text-sm font-medium">{i.subject}</p>
+            <p className="truncate text-xs text-muted">
+              {i.from}
+              {i.summary ? ` · ${i.summary}` : ""}
+            </p>
+          </ItemLink>
         </li>
       ))}
     </BriefGroup>
+  );
+}
+
+// Wraps a brief row in a link to the source message when one exists, so a
+// click jumps straight to the email; otherwise renders a plain row.
+function ItemLink({ url, children }: { url: string; children: React.ReactNode }) {
+  if (!url) return <div className="px-4 py-3">{children}</div>;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block px-4 py-3 transition hover:bg-border/40"
+    >
+      {children}
+    </a>
   );
 }
 
