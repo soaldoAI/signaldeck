@@ -4,6 +4,7 @@ import { getBrief, type BriefItem } from "@/server/intelligence/brief";
 import { getTimezone } from "@/server/settings";
 import { StatusDot } from "@/app/_components/status-dot";
 import { logout } from "@/app/login/actions";
+import { sendTestBriefing } from "@/app/_actions/briefing";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,17 @@ const CONNECT_BANNER: Record<string, { tone: "ok" | "err"; text: string }> = {
     tone: "err",
     text: "Google isn't configured yet (see docs/google-oauth-setup.md).",
   },
+  sent: { tone: "ok", text: "Test briefing sent — check your inbox." },
+  "briefing-failed": {
+    tone: "err",
+    text: "Couldn't send the briefing — check SMTP settings.",
+  },
 };
 
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ connect?: string }>;
+  searchParams: Promise<{ connect?: string; briefing?: string }>;
 }) {
   const user = await requireUser();
   const [connectors, brief, timezone] = await Promise.all([
@@ -29,7 +35,9 @@ export default async function Dashboard({
     getBrief(user.id),
     getTimezone(),
   ]);
-  const banner = CONNECT_BANNER[(await searchParams).connect ?? ""];
+  const sp = await searchParams;
+  const briefingKey = sp.briefing === "failed" ? "briefing-failed" : sp.briefing;
+  const banner = CONNECT_BANNER[sp.connect ?? briefingKey ?? ""];
   const analysing = brief.totalMessages - brief.classifiedCount;
 
   return (
@@ -59,13 +67,22 @@ export default async function Dashboard({
       )}
 
       <section className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
             Today&apos;s brief
           </h2>
-          {analysing > 0 && (
-            <span className="text-xs text-muted">Analysing {analysing}…</span>
-          )}
+          <div className="flex items-center gap-3">
+            {analysing > 0 && (
+              <span className="text-xs text-muted">Analysing {analysing}…</span>
+            )}
+            {brief.classifiedCount > 0 && (
+              <form action={sendTestBriefing}>
+                <button className="text-xs text-accent underline-offset-4 hover:underline">
+                  Email me this brief
+                </button>
+              </form>
+            )}
+          </div>
         </div>
 
         {brief.totalMessages === 0 ? (

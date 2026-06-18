@@ -61,6 +61,48 @@ export async function getTimezone(): Promise<string> {
   return s.get("app.timezone") || process.env.APP_TIMEZONE || "UTC";
 }
 
+// --- Daily briefing -------------------------------------------------------
+
+export interface BriefingConfig {
+  enabled: boolean;
+  /** Local hour (0–23) to send the daily briefing. */
+  hour: number;
+  /** Recipient email; empty means "use the admin's login email". */
+  recipient: string;
+  /** YYYY-MM-DD (local) of the last send, to avoid double-sending. */
+  lastSentDate: string;
+}
+
+export async function getBriefingConfig(): Promise<BriefingConfig> {
+  const s = await readMany([
+    "briefing.enabled",
+    "briefing.hour",
+    "briefing.recipient",
+    "briefing.lastSentDate",
+  ]);
+  return {
+    enabled: (s.get("briefing.enabled") ?? "true") !== "false",
+    hour: Number(s.get("briefing.hour") ?? "7"),
+    recipient: s.get("briefing.recipient") ?? "",
+    lastSentDate: s.get("briefing.lastSentDate") ?? "",
+  };
+}
+
+export async function saveBriefingConfig(config: {
+  enabled?: boolean;
+  hour?: number;
+  recipient?: string;
+  lastSentDate?: string;
+}): Promise<void> {
+  await writeMany({
+    "briefing.enabled":
+      config.enabled === undefined ? undefined : String(config.enabled),
+    "briefing.hour": config.hour === undefined ? undefined : String(config.hour),
+    "briefing.recipient": config.recipient,
+    "briefing.lastSentDate": config.lastSentDate,
+  });
+}
+
 // --- AI provider ----------------------------------------------------------
 
 export type AiProvider = "anthropic" | "openai" | "ollama";

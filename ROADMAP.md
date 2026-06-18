@@ -13,7 +13,7 @@ tested, documented code. Status: ✅ done · 🚧 in progress · ⬜ planned.
 | 6     | Message normalisation     | ✅     | Unified `messages` store across sources (Gmail + Calendar feed one model the brain reads). |
 | 7     | AI classification engine  | ✅     | Per-message triage via the configured provider (llama3.1 default): needs-reply / urgent / waiting / fyi / ignore + one-line summary. Robust parsing for local models; worker-driven, bounded per tick. |
 | 8     | Action extraction         | ✅     | Concrete next action extracted per message in the same pass; surfaced as "What needs you". Owners/due-dates: future. |
-| 9     | Daily briefing & delivery | ⬜     | The hero feature. Pluggable delivery: email via connected Gmail API (no SMTP) → SMTP fallback → Telegram (Community). WhatsApp delivery is Pro. Calm design. |
+| 9     | Daily briefing & delivery | ✅     | The hero feature. Renders the brief to a calm HTML/text email and delivers it on a timezone-aware daily schedule (worker), once/day. "Email me this brief" button for instant send. Email/SMTP done; Gmail-API & Telegram delivery are next within this lane. |
 | 10    | Dashboard                 | ⬜     | Briefing view, actions, message drill-down.                  |
 | 11    | Testing                   | ⬜     | Hardening pass; tests are also added per-phase.              |
 | 12    | Documentation             | ⬜     | Install, configure, self-host, contribute.                   |

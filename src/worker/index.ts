@@ -8,6 +8,7 @@ import { syncAllGmail } from "@/server/connectors/gmail/sync";
 import { syncAllCalendars } from "@/server/connectors/calendar/sync";
 import { syncAllTelegram } from "@/server/connectors/telegram/sync";
 import { classifyPendingMessages } from "@/server/intelligence/classify";
+import { maybeSendDailyBriefing } from "@/server/delivery/schedule";
 
 const SYNC_INTERVAL_MS = 5 * 60_000; // every 5 minutes
 let timer: NodeJS.Timeout | undefined;
@@ -24,6 +25,8 @@ async function tick(): Promise<void> {
     // away rather than blocking one tick on a slow local model).
     const { classified } = await classifyPendingMessages(40);
     if (classified > 0) console.log(`[worker] classified ${classified} messages`);
+    // Send the daily briefing if it's due (at most once per day).
+    await maybeSendDailyBriefing();
   } catch (error) {
     console.error("[worker] sync tick failed", error);
   } finally {
