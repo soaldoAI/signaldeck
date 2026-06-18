@@ -42,16 +42,22 @@ interface MessageLike {
   snippet: string;
 }
 
+// The fields a rule's subject is matched against, in one place so the
+// in-memory check and the DB reclassify query can never drift apart.
+const MATCH_FIELDS = ["fromName", "fromEmail", "subject", "snippet"] as const;
+
 /** Does a rule's subject appear in the message (sender / address / text)? */
 function matches(rule: Rule, m: MessageLike): boolean {
   const s = rule.subject;
   if (!s) return false;
-  return (
-    m.fromName.toLowerCase().includes(s) ||
-    m.fromEmail.toLowerCase().includes(s) ||
-    m.subject.toLowerCase().includes(s) ||
-    m.snippet.toLowerCase().includes(s)
-  );
+  return MATCH_FIELDS.some((f) => m[f].toLowerCase().includes(s));
+}
+
+/** Prisma `OR` clause matching the same fields — for reclassify queries. */
+export function ruleMatchWhere(subject: string) {
+  return MATCH_FIELDS.map((f) => ({
+    [f]: { contains: subject, mode: "insensitive" as const },
+  }));
 }
 
 /** A matching mute rule means we can skip the AI entirely for this message. */

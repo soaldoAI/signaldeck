@@ -123,11 +123,13 @@ export async function getBrief(userId: string): Promise<Brief> {
     url: messageUrl(m.connectorId, m.externalId, m.threadId, m.account.label),
   }));
 
-  // Actionable = needs the user to do/answer something.
+  // Actionable = needs the user to do/answer something. "waiting" is its own
+  // bucket and is excluded here so an item can never land in two tiers.
   const actionable = (i: BriefItem) =>
-    i.category === "needs_reply" ||
-    i.category === "urgent" ||
-    i.action.trim().length > 0;
+    i.category !== "waiting" &&
+    (i.category === "needs_reply" ||
+      i.category === "urgent" ||
+      i.action.trim().length > 0);
 
   const acts = items.filter(actionable);
 

@@ -22,8 +22,6 @@ async function tick(): Promise<void> {
     await syncAllGmail();
     await syncAllCalendars();
     await syncAllTelegram();
-    // Learn from anything the user texted the bot (applies before we classify).
-    await processInboundTelegram();
     // Classify whatever's new (bounded per tick so a big backlog is chipped
     // away rather than blocking one tick on a slow local model).
     const { classified } = await classifyPendingMessages(40);
@@ -34,6 +32,21 @@ async function tick(): Promise<void> {
     console.error("[worker] sync tick failed", error);
   } finally {
     running = false;
+  }
+}
+
+// Continuous Telegram long-poll: replies to the user near-instantly instead
+// of waiting for the 5-minute sync tick. When the bot isn't configured, back
+// off so we don't hot-loop.
+async function telegramLoop(): Promise<void> {
+  for (;;) {
+    let active = false;
+    try {
+      active = await processInboundTelegram({ longPollSeconds: 30 });
+    } catch (error) {
+      console.error("[worker] telegram loop error", error);
+    }
+    if (!active) await new Promise((r) => setTimeout(r, 30_000));
   }
 }
 
@@ -48,6 +61,7 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
+  void telegramLoop(); // instant inbound handling, runs alongside the tick
   await tick(); // sync once at startup
   timer = setInterval(tick, SYNC_INTERVAL_MS);
 }

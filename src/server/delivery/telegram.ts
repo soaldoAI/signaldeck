@@ -58,12 +58,26 @@ export interface TelegramUpdate {
   text: string;
 }
 
-/** Fetch inbound messages to the bot. `offset` acknowledges prior updates. */
-export async function getUpdates(offset?: number): Promise<TelegramUpdate[]> {
-  const url = `${API}/bot${await botToken()}/getUpdates?timeout=0${
+/**
+ * Fetch inbound messages to the bot. `offset` acknowledges prior updates.
+ * `timeoutSeconds > 0` enables long-polling: the request blocks until a
+ * message arrives (up to that long), so the bot can respond near-instantly
+ * without hammering the API.
+ */
+export async function getUpdates(
+  offset?: number,
+  timeoutSeconds = 0,
+): Promise<TelegramUpdate[]> {
+  const url = `${API}/bot${await botToken()}/getUpdates?timeout=${timeoutSeconds}${
     offset ? `&offset=${offset}` : ""
   }`;
-  const res = await fetch(url);
+  // Abort a little after the long-poll window so a wedged connection can't
+  // hang the loop forever.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), (timeoutSeconds + 10) * 1000);
+  const res = await fetch(url, { signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
   const body = (await res.json()) as {
     ok: boolean;
     result?: Array<{

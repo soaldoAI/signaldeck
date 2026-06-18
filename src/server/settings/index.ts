@@ -82,9 +82,10 @@ export async function getBriefingConfig(): Promise<BriefingConfig> {
     "briefing.recipient",
     "briefing.lastSentDate",
   ]);
+  const hour = Number(s.get("briefing.hour") ?? "7");
   return {
     enabled: (s.get("briefing.enabled") ?? "true") !== "false",
-    hour: Number(s.get("briefing.hour") ?? "7"),
+    hour: Number.isFinite(hour) ? hour : 7,
     recipient: s.get("briefing.recipient") ?? "",
     lastSentDate: s.get("briefing.lastSentDate") ?? "",
   };
