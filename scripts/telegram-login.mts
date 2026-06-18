@@ -47,7 +47,13 @@ async function main(): Promise<void> {
         : "Telegram";
 
   await prisma.connectorAccount.upsert({
-    where: { userId_connectorId: { userId: user.id, connectorId: "telegram" } },
+    where: {
+      userId_connectorId_externalId: {
+        userId: user.id,
+        connectorId: "telegram",
+        externalId: String(me.id),
+      },
+    },
     create: {
       userId: user.id,
       connectorId: "telegram",

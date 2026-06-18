@@ -11,7 +11,8 @@ function item(over: Partial<BriefItem> = {}): BriefItem {
     action: "Sign the contract",
     category: "needs_reply",
     priority: "high",
-    source: { name: "Gmail", icon: "✉️" },
+    source: { name: "Gmail", icon: "✉️", color: "#ea4335" },
+    account: "me@work.com",
     url: "https://mail.google.com/x",
     ...over,
   };
@@ -19,7 +20,13 @@ function item(over: Partial<BriefItem> = {}): BriefItem {
 
 const baseBrief: Brief = {
   high: [item()],
-  medium: [item({ id: "2", action: "Reply to Joe", source: { name: "Telegram", icon: "✈️" } })],
+  medium: [
+    item({
+      id: "2",
+      action: "Reply to Joe",
+      source: { name: "Telegram", icon: "✈️", color: "#0088cc" },
+    }),
+  ],
   low: [],
   waiting: [],
   events: [

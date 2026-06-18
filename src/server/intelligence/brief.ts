@@ -11,6 +11,8 @@ import type { Category, Priority } from "./parse";
 export interface BriefSource {
   name: string;
   icon: string;
+  /** Brand-ish colour for the badge in the UI/email. */
+  color: string;
 }
 
 export interface BriefItem {
@@ -22,6 +24,8 @@ export interface BriefItem {
   category: Category;
   priority: Priority;
   source: BriefSource;
+  /** Which connected account this came from (e.g. the email address). */
+  account: string;
   /** Deep link to open the original message, or "". */
   url: string;
 }
@@ -48,15 +52,15 @@ export interface Brief {
 }
 
 const SOURCES: Record<string, BriefSource> = {
-  gmail: { name: "Gmail", icon: "✉️" },
-  google_calendar: { name: "Calendar", icon: "📅" },
-  telegram: { name: "Telegram", icon: "✈️" },
-  slack: { name: "Slack", icon: "💬" },
-  whatsapp: { name: "WhatsApp", icon: "📲" },
+  gmail: { name: "Gmail", icon: "✉️", color: "#ea4335" },
+  google_calendar: { name: "Calendar", icon: "📅", color: "#4285f4" },
+  telegram: { name: "Telegram", icon: "✈️", color: "#0088cc" },
+  slack: { name: "Slack", icon: "💬", color: "#611f69" },
+  whatsapp: { name: "WhatsApp", icon: "📲", color: "#25d366" },
 };
 
 function sourceFor(connectorId: string): BriefSource {
-  return SOURCES[connectorId] ?? { name: connectorId, icon: "•" };
+  return SOURCES[connectorId] ?? { name: connectorId, icon: "•", color: "#78716c" };
 }
 
 function messageUrl(
@@ -110,6 +114,7 @@ export async function getBrief(userId: string): Promise<Brief> {
     category: (m.insight?.category ?? "fyi") as Category,
     priority: (m.insight?.priority ?? "medium") as Priority,
     source: sourceFor(m.connectorId),
+    account: m.account.label,
     url: messageUrl(m.connectorId, m.externalId, m.threadId, m.account.label),
   }));
 

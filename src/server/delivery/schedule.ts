@@ -38,9 +38,13 @@ export async function maybeSendDailyBriefing(): Promise<void> {
   if (!user) return;
   const recipient = config.recipient || user.email;
 
+  // Claim today BEFORE sending, so a second tick (or a rapid worker restart)
+  // sees lastSentDate and skips — preventing the brief going out twice.
+  await saveBriefingConfig({ lastSentDate: date });
+
   // Deliver to every configured channel. Email is always available; Telegram
   // when a bot is set up. (WhatsApp delivery is a future method on this same
-  // seam.) The day is marked sent if at least one channel succeeds.
+  // seam.)
   const results: string[] = [];
   let anyOk = false;
 
@@ -54,6 +58,7 @@ export async function maybeSendDailyBriefing(): Promise<void> {
     anyOk ||= tg.ok;
   }
 
-  if (anyOk) await saveBriefingConfig({ lastSentDate: date });
+  // Everything failed — release the claim so the next tick retries today.
+  if (!anyOk) await saveBriefingConfig({ lastSentDate: "" });
   console.log(`[worker] daily briefing — ${results.join(", ")}`);
 }

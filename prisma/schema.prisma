@@ -86,7 +86,9 @@ model ConnectorAccount {
   messages     Message[]
   events       CalendarEvent[]
 
-  @@unique([userId, connectorId])
+  // Keyed by externalId so a user can connect several accounts of the same
+  // kind (e.g. work + personal Gmail).
+  @@unique([userId, connectorId, externalId])
   @@index([userId])
   @@map("connector_accounts")
 }

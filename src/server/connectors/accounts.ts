@@ -43,7 +43,9 @@ export async function upsertGoogleAccount(params: {
     : undefined;
 
   return prisma.connectorAccount.upsert({
-    where: { userId_connectorId: { userId, connectorId } },
+    where: {
+      userId_connectorId_externalId: { userId, connectorId, externalId },
+    },
     create: {
       userId,
       connectorId,

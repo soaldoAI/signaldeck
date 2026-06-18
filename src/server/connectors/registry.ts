@@ -99,24 +99,47 @@ export function getConnectorCatalogue(): ConnectorHealth[] {
 export async function getConnectorHealthForUser(
   userId: string,
 ): Promise<ConnectorHealth[]> {
-  const accounts = await prisma.connectorAccount.findMany({ where: { userId } });
-  const byConnector = new Map(accounts.map((a) => [a.connectorId, a]));
+  const accounts = await prisma.connectorAccount.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+  const byConnector = new Map<string, typeof accounts>();
+  for (const a of accounts) {
+    const list = byConnector.get(a.connectorId) ?? [];
+    list.push(a);
+    byConnector.set(a.connectorId, list);
+  }
 
-  return CONNECTORS.map((descriptor) => {
-    const account = byConnector.get(descriptor.id);
-    if (!account) {
-      return {
-        descriptor,
-        status: "not_connected" as const,
-        detail: descriptor.available ? "Ready to connect" : "Coming soon",
-      };
+  // One row per connected account (so a user with two Gmail accounts sees
+  // both), plus one "ready to connect" row per available, unconnected
+  // connector.
+  return CONNECTORS.flatMap((descriptor): ConnectorHealth[] => {
+    const connected = byConnector.get(descriptor.id) ?? [];
+    if (connected.length === 0) {
+      return [
+        {
+          descriptor,
+          status: "not_connected",
+          detail: descriptor.available ? "Ready to connect" : "Coming soon",
+        },
+      ];
     }
-    return {
+    const rows: ConnectorHealth[] = connected.map((account) => ({
       descriptor,
       status: account.status as ConnectorStatus,
       detail: account.detail || syncedDetail(account.lastSyncedAt),
       label: account.label,
-    };
+    }));
+    // Let the user connect an additional account of the same kind (e.g. a
+    // second Gmail). Telegram is a single user-account login.
+    if (descriptor.available && descriptor.id !== "telegram") {
+      rows.push({
+        descriptor,
+        status: "not_connected",
+        detail: "Add another account",
+      });
+    }
+    return rows;
   });
 }
 

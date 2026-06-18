@@ -166,11 +166,11 @@ export default async function Dashboard({
           Channels
         </h2>
         <ul className="flex flex-col gap-2">
-          {connectors.map(({ descriptor, status, detail, label }) => {
+          {connectors.map(({ descriptor, status, detail, label }, idx) => {
             const connected = status !== "not_connected";
             return (
               <li
-                key={descriptor.id}
+                key={`${descriptor.id}-${label ?? idx}`}
                 className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
               >
                 <span className="text-lg" aria-hidden>
@@ -251,8 +251,12 @@ function BriefList({
           <li key={i.id}>
             <ItemLink url={i.url}>
               <p className="text-sm font-medium">{i.action || i.subject}</p>
-              <p className="truncate text-xs text-muted">
-                {i.from} · {i.source.icon} {i.source.name}
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+                <SourceBadge source={i.source} />
+                <span className="truncate">
+                  {i.from}
+                  <span className="text-muted/70"> · {i.account}</span>
+                </span>
               </p>
             </ItemLink>
           </li>
@@ -264,6 +268,18 @@ function BriefList({
         )}
       </ul>
     </div>
+  );
+}
+
+// A small coloured pill identifying the channel a brief item came from.
+function SourceBadge({ source }: { source: BriefItem["source"] }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
+      style={{ background: source.color }}
+    >
+      {source.icon} {source.name}
+    </span>
   );
 }
 

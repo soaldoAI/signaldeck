@@ -20,7 +20,8 @@ function primary(i: BriefItem): string {
   return i.action || i.subject;
 }
 function secondary(i: BriefItem): string {
-  return `${i.from} · ${i.source.icon} ${i.source.name}`;
+  // Source first so the channel is obvious; then sender and which account.
+  return `${i.source.icon} ${i.source.name} · ${i.from} · ${i.account}`;
 }
 
 function eventTime(e: BriefEvent, tz: string): string {
@@ -148,7 +149,8 @@ function htmlRow(i: BriefItem): string {
   const link = i.url
     ? ` <a href="${esc(i.url)}" style="color:#0f766e;font-size:12px">open →</a>`
     : "";
-  return `<strong>${esc(primary(i))}</strong>${link}<br><span style="color:#78716c">${esc(secondary(i))}</span>`;
+  const badge = `<span style="display:inline-block;background:${i.source.color};color:#fff;font-size:10px;font-weight:600;border-radius:4px;padding:1px 5px">${esc(i.source.icon + " " + i.source.name)}</span>`;
+  return `<strong>${esc(primary(i))}</strong>${link}<br>${badge} <span style="color:#78716c">${esc(i.from + " · " + i.account)}</span>`;
 }
 
 function htmlGroup(
