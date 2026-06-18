@@ -49,7 +49,7 @@ export async function sendBriefing(
 export async function sendBriefingToTelegram(
   userId: string,
 ): Promise<SendBriefingResult> {
-  if (!telegramBotConfigured()) {
+  if (!(await telegramBotConfigured())) {
     return { ok: false, detail: "Telegram bot not configured" };
   }
 

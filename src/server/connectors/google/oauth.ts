@@ -43,20 +43,25 @@ export interface GoogleTokens {
   scope: string;
 }
 
-function clientCredentials(): { clientId: string; clientSecret: string } {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+import { getGoogleCredentials } from "@/server/settings";
+
+async function clientCredentials(): Promise<{
+  clientId: string;
+  clientSecret: string;
+}> {
+  const { clientId, clientSecret } = await getGoogleCredentials();
   if (!clientId || !clientSecret) {
     throw new Error(
-      "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and " +
-        "GOOGLE_CLIENT_SECRET (see docs/google-oauth-setup.md).",
+      "Google isn't configured yet. Add your Google client ID and secret " +
+        "in Settings (see docs/google-oauth-setup.md).",
     );
   }
   return { clientId, clientSecret };
 }
 
-export function isGoogleConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+export async function isGoogleConfigured(): Promise<boolean> {
+  const { clientId, clientSecret } = await getGoogleCredentials();
+  return Boolean(clientId && clientSecret);
 }
 
 /** Redirect URI must match exactly what's registered in Google Cloud. */
@@ -66,8 +71,11 @@ export function googleRedirectUri(): string {
 }
 
 /** Build the Google consent URL to redirect the user to. */
-export function buildAuthUrl(options: { state: string; scopes?: string[] }): string {
-  const { clientId } = clientCredentials();
+export async function buildAuthUrl(options: {
+  state: string;
+  scopes?: string[];
+}): Promise<string> {
+  const { clientId } = await clientCredentials();
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: googleRedirectUri(),
@@ -111,8 +119,8 @@ async function postToken(body: URLSearchParams): Promise<GoogleTokens> {
 }
 
 /** Exchange an authorization code (from the callback) for tokens. */
-export function exchangeCode(code: string): Promise<GoogleTokens> {
-  const { clientId, clientSecret } = clientCredentials();
+export async function exchangeCode(code: string): Promise<GoogleTokens> {
+  const { clientId, clientSecret } = await clientCredentials();
   return postToken(
     new URLSearchParams({
       code,
@@ -125,8 +133,10 @@ export function exchangeCode(code: string): Promise<GoogleTokens> {
 }
 
 /** Get a fresh access token from a stored refresh token. */
-export function refreshAccessToken(refreshToken: string): Promise<GoogleTokens> {
-  const { clientId, clientSecret } = clientCredentials();
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<GoogleTokens> {
+  const { clientId, clientSecret } = await clientCredentials();
   return postToken(
     new URLSearchParams({
       refresh_token: refreshToken,

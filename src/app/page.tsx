@@ -56,7 +56,7 @@ export default async function Dashboard({
     : undefined;
   const banner = CONNECT_BANNER[sp.connect ?? briefingKey ?? ""];
   const analysing = brief.totalMessages - brief.classifiedCount;
-  const tgEnabled = telegramBotConfigured();
+  const tgEnabled = await telegramBotConfigured();
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-10">

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const user = await getSessionUser();
   if (!user) return NextResponse.redirect(new URL("/login", origin));
 
-  if (!isGoogleConfigured()) {
+  if (!(await isGoogleConfigured())) {
     return NextResponse.redirect(new URL("/?connect=unconfigured", origin));
   }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const state = randomBytes(16).toString("hex");
   const response = NextResponse.redirect(
-    buildAuthUrl({ state, scopes: scopesForConnector(connector) }),
+    await buildAuthUrl({ state, scopes: scopesForConnector(connector) }),
   );
   // Set cookies directly on the redirect response — the next/headers
   // cookies() helper does not reliably attach to a manually-created

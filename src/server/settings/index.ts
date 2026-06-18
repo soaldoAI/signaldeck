@@ -15,6 +15,8 @@ const SECRET_KEYS = new Set<string>([
   "ai.anthropicApiKey",
   "ai.openaiApiKey",
   "smtp.password",
+  "google.clientSecret",
+  "telegram.botToken",
 ]);
 
 async function readMany(keys: string[]): Promise<Map<string, string>> {
@@ -101,6 +103,53 @@ export async function saveBriefingConfig(config: {
     "briefing.recipient": config.recipient,
     "briefing.lastSentDate": config.lastSentDate,
   });
+}
+
+// --- Connection credentials (settable in the UI; env as fallback) ---------
+// Stored in the DB (secrets encrypted) so users paste them in the app
+// instead of editing .env and restarting. Env vars remain a fallback for
+// scripted/headless deploys.
+
+export interface GoogleCredentials {
+  clientId: string;
+  clientSecret: string;
+}
+
+export async function getGoogleCredentials(): Promise<GoogleCredentials> {
+  // DB-stored values win; env is the fallback (and the safety net if the DB
+  // is unreachable, so OAuth keeps working).
+  const s = await readMany([
+    "google.clientId",
+    "google.clientSecret",
+  ]).catch(() => new Map<string, string>());
+  return {
+    clientId: s.get("google.clientId") || process.env.GOOGLE_CLIENT_ID || "",
+    clientSecret:
+      s.get("google.clientSecret") || process.env.GOOGLE_CLIENT_SECRET || "",
+  };
+}
+
+export async function saveGoogleCredentials(creds: {
+  clientId: string;
+  clientSecret?: string;
+}): Promise<void> {
+  await writeMany({
+    "google.clientId": creds.clientId,
+    // undefined = leave the stored secret untouched (so a blank field in the
+    // form doesn't wipe a saved secret).
+    "google.clientSecret": creds.clientSecret || undefined,
+  });
+}
+
+export async function getBotToken(): Promise<string> {
+  const s = await readMany(["telegram.botToken"]).catch(
+    () => new Map<string, string>(),
+  );
+  return s.get("telegram.botToken") || process.env.TELEGRAM_BOT_TOKEN || "";
+}
+
+export async function saveBotToken(token: string): Promise<void> {
+  await writeMany({ "telegram.botToken": token || undefined });
 }
 
 // --- Telegram delivery ----------------------------------------------------

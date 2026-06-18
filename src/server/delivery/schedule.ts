@@ -48,7 +48,7 @@ export async function maybeSendDailyBriefing(): Promise<void> {
   results.push(`email:${email.ok ? "ok" : email.detail}`);
   anyOk ||= email.ok;
 
-  if (telegramBotConfigured()) {
+  if (await telegramBotConfigured()) {
     const tg = await sendBriefingToTelegram(user.id);
     results.push(`telegram:${tg.ok ? "ok" : tg.detail}`);
     anyOk ||= tg.ok;

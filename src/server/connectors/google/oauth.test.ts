@@ -18,8 +18,8 @@ afterEach(() => {
 });
 
 describe("buildAuthUrl", () => {
-  it("includes the required OAuth parameters", () => {
-    const url = new URL(buildAuthUrl({ state: "xyz" }));
+  it("includes the required OAuth parameters", async () => {
+    const url = new URL(await buildAuthUrl({ state: "xyz" }));
     expect(url.origin + url.pathname).toBe(
       "https://accounts.google.com/o/oauth2/v2/auth",
     );
@@ -40,9 +40,9 @@ describe("buildAuthUrl", () => {
 });
 
 describe("isGoogleConfigured", () => {
-  it("is false when credentials are missing", () => {
+  it("is false when credentials are missing", async () => {
     delete process.env.GOOGLE_CLIENT_ID;
-    expect(isGoogleConfigured()).toBe(false);
+    expect(await isGoogleConfigured()).toBe(false);
   });
 });
 

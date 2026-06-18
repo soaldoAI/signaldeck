@@ -3,17 +3,19 @@
 // makes "everything in one Telegram app" work: the brief lands in Telegram
 // alongside the chats SignalDeck already reads.
 
+import { getBotToken } from "@/server/settings";
+
 const API = "https://api.telegram.org";
 
-export function telegramBotConfigured(): boolean {
-  return Boolean(process.env.TELEGRAM_BOT_TOKEN);
+export async function telegramBotConfigured(): Promise<boolean> {
+  return Boolean(await getBotToken());
 }
 
-function botToken(): string {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+async function botToken(): Promise<string> {
+  const token = await getBotToken();
   if (!token) {
     throw new Error(
-      "Telegram delivery is not configured. Set TELEGRAM_BOT_TOKEN " +
+      "Telegram delivery isn't configured. Add a bot token in Settings " +
         "(see docs/telegram-setup.md → Deliver your brief to Telegram).",
     );
   }
@@ -31,7 +33,7 @@ export async function sendTelegramMessage(
   html: string,
 ): Promise<TelegramSendResult> {
   try {
-    const res = await fetch(`${API}/bot${botToken()}/sendMessage`, {
+    const res = await fetch(`${API}/bot${await botToken()}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -56,7 +58,7 @@ export async function sendTelegramMessage(
  * Returns null if nobody has messaged the bot yet.
  */
 export async function resolveChatId(): Promise<string | null> {
-  const res = await fetch(`${API}/bot${botToken()}/getUpdates`);
+  const res = await fetch(`${API}/bot${await botToken()}/getUpdates`);
   const body = (await res.json()) as {
     ok: boolean;
     result?: Array<{ message?: { chat?: { id?: number; type?: string } } }>;
