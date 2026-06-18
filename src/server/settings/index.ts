@@ -165,6 +165,17 @@ export async function setTelegramChatId(chatId: string): Promise<void> {
   await writeMany({ "delivery.telegram.chatId": chatId });
 }
 
+/** getUpdates cursor so inbound bot messages are processed exactly once. */
+export async function getTelegramOffset(): Promise<number> {
+  return Number(
+    (await readMany(["telegram.updateOffset"])).get("telegram.updateOffset") || "0",
+  );
+}
+
+export async function setTelegramOffset(offset: number): Promise<void> {
+  await writeMany({ "telegram.updateOffset": String(offset) });
+}
+
 // --- AI provider ----------------------------------------------------------
 
 export type AiProvider = "anthropic" | "openai" | "ollama";

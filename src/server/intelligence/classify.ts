@@ -6,6 +6,13 @@
 import { prisma } from "@/server/db/client";
 import { getAiProvider, type AiProvider } from "@/server/ai";
 import { parseInsight, type Insight } from "./parse";
+import {
+  applyPriorityRules,
+  getActiveRules,
+  muteMatch,
+  notesForPrompt,
+  type Rule,
+} from "./memory";
 import type { Message } from "@/generated/prisma/client";
 
 export { CATEGORIES, type Category, type Insight } from "./parse";
@@ -43,17 +50,26 @@ function buildUserPrompt(message: Message): string {
   ].join("\n");
 }
 
-/** Classify a single message via the given provider. */
+/**
+ * Classify a single message, consulting the user's memory/rules:
+ *  - a matching "mute" rule skips the AI entirely (→ ignore),
+ *  - "note" rules are given to the model as standing preferences,
+ *  - "priority" rules override the model's priority afterwards.
+ */
 export async function classifyMessage(
   provider: AiProvider,
   message: Message,
+  rules: Rule[] = [],
 ): Promise<Insight> {
+  if (muteMatch(rules, message)) {
+    return { category: "ignore", priority: "low", summary: "Muted by your rule", action: "" };
+  }
   const result = await provider.generate({
-    system: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT + notesForPrompt(rules),
     messages: [{ role: "user", content: buildUserPrompt(message) }],
     maxTokens: 300,
   });
-  return parseInsight(result.text);
+  return applyPriorityRules(rules, message, parseInsight(result.text));
 }
 
 export interface ClassifyResult {
@@ -76,11 +92,14 @@ export async function classifyPendingMessages(
   if (pending.length === 0) return { classified: 0 };
 
   const provider = await getAiProvider();
+  // Single-admin instance: load the admin's rules once for this batch.
+  const user = await prisma.user.findFirst();
+  const rules = user ? await getActiveRules(user.id) : [];
   let classified = 0;
 
   for (const message of pending) {
     try {
-      const insight = await classifyMessage(provider, message);
+      const insight = await classifyMessage(provider, message, rules);
       await prisma.messageInsight.create({
         data: {
           messageId: message.id,

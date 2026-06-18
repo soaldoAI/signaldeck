@@ -5,11 +5,13 @@ import { getTimezone } from "@/server/settings";
 import { StatusDot } from "@/app/_components/status-dot";
 import { logout } from "@/app/login/actions";
 import { telegramBotConfigured } from "@/server/delivery/telegram";
+import { getActiveRules } from "@/server/intelligence/memory";
 import {
   markDone,
   sendTestBriefing,
   sendTestBriefingTelegram,
 } from "@/app/_actions/briefing";
+import { addRuleAction, deleteRuleAction } from "@/app/_actions/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +48,11 @@ export default async function Dashboard({
   searchParams: Promise<{ connect?: string; briefing?: string }>;
 }) {
   const user = await requireUser();
-  const [connectors, brief, timezone] = await Promise.all([
+  const [connectors, brief, timezone, rules] = await Promise.all([
     getConnectorHealthForUser(user.id),
     getBrief(user.id),
     getTimezone(),
+    getActiveRules(user.id),
   ]);
   const sp = await searchParams;
   const briefingKey = sp.briefing
@@ -220,6 +223,59 @@ export default async function Dashboard({
             );
           })}
         </ul>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
+          What I&apos;ve learned
+        </h2>
+        <p className="text-xs text-muted">
+          Tell your Telegram bot things like <em>&quot;mute newsletters from
+          Substack&quot;</em> or <em>&quot;Cameron is always high priority&quot;</em> — or
+          add a rule here. SignalDeck applies it to every message.
+        </p>
+        {rules.length > 0 && (
+          <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+            {rules.map((r) => (
+              <li key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                    r.kind === "mute"
+                      ? "bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300"
+                      : r.kind === "priority"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                        : "bg-stone-100 text-muted dark:bg-stone-800"
+                  }`}
+                >
+                  {r.kind}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm">{r.text}</span>
+                <form action={deleteRuleAction.bind(null, r.id)}>
+                  <button className="text-xs text-muted hover:text-red-600">
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form action={addRuleAction} className="flex items-center gap-2">
+          <select
+            name="kind"
+            className="rounded-lg border border-border bg-card px-2 py-1.5 text-sm"
+          >
+            <option value="mute">Mute</option>
+            <option value="priority">Prioritise</option>
+          </select>
+          <input
+            name="subject"
+            placeholder="sender, domain, or topic (e.g. substack)"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-card px-3 py-1.5 text-sm outline-none focus:border-accent"
+          />
+          <button className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition hover:border-accent">
+            Add
+          </button>
+        </form>
       </section>
     </main>
   );

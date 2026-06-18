@@ -52,6 +52,35 @@ export async function sendTelegramMessage(
   }
 }
 
+export interface TelegramUpdate {
+  updateId: number;
+  chatId: string;
+  text: string;
+}
+
+/** Fetch inbound messages to the bot. `offset` acknowledges prior updates. */
+export async function getUpdates(offset?: number): Promise<TelegramUpdate[]> {
+  const url = `${API}/bot${await botToken()}/getUpdates?timeout=0${
+    offset ? `&offset=${offset}` : ""
+  }`;
+  const res = await fetch(url);
+  const body = (await res.json()) as {
+    ok: boolean;
+    result?: Array<{
+      update_id: number;
+      message?: { text?: string; chat?: { id?: number; type?: string } };
+    }>;
+  };
+  if (!body.ok || !body.result) return [];
+  return body.result
+    .filter((u) => u.message?.text && u.message.chat?.type === "private")
+    .map((u) => ({
+      updateId: u.update_id,
+      chatId: String(u.message!.chat!.id),
+      text: u.message!.text!,
+    }));
+}
+
 /**
  * Discover the chat id to deliver to: the most recent private chat that has
  * messaged the bot. The user just has to send their bot any message once.

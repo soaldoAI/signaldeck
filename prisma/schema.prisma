@@ -29,6 +29,7 @@ model User {
   updatedAt    DateTime  @updatedAt
   sessions     Session[]
   accounts     ConnectorAccount[]
+  rules        Rule[]
 
   @@map("users")
 }
@@ -46,6 +47,27 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+/// A learned preference / rule the user has given SignalDeck (e.g. "mute
+/// newsletters from X", "Cameron is always high priority"). The classifier
+/// consults these on every message, so SignalDeck visibly learns. Stored
+/// locally; never leaves the machine.
+model Rule {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// What the user said, verbatim — kept for transparency and editing.
+  text      String
+  /// mute | priority | note — how the classifier applies it.
+  kind      String   @default("note")
+  /// Free-form target the rule is about (a sender, domain, topic…).
+  subject   String   @default("")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("rules")
 }
 
 /// Key-value application settings (AI provider, SMTP, …). A flat store
