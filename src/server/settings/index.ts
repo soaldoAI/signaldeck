@@ -103,6 +103,19 @@ export async function saveBriefingConfig(config: {
   });
 }
 
+// --- Telegram delivery ----------------------------------------------------
+
+/** The chat id the brief is delivered to (resolved once from getUpdates). */
+export async function getTelegramChatId(): Promise<string> {
+  return (await readMany(["delivery.telegram.chatId"])).get(
+    "delivery.telegram.chatId",
+  ) ?? "";
+}
+
+export async function setTelegramChatId(chatId: string): Promise<void> {
+  await writeMany({ "delivery.telegram.chatId": chatId });
+}
+
 // --- AI provider ----------------------------------------------------------
 
 export type AiProvider = "anthropic" | "openai" | "ollama";

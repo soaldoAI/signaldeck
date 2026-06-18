@@ -78,6 +78,54 @@ function pushTextGroup(lines: string[], title: string, items: BriefItem[]): void
   lines.push("");
 }
 
+// --- Telegram -------------------------------------------------------------
+// Telegram's HTML mode supports a small tag subset (<b>, <i>, <a>) — no
+// lists or headings — so we build bold-header + bullet blocks.
+
+function tg(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function renderBriefingTelegram(brief: Brief, timezone: string): string {
+  const today = new Date().toLocaleDateString("en-GB", {
+    timeZone: timezone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const blocks: string[] = [`<b>SignalDeck — ${tg(today)}</b>`];
+
+  if (brief.actions.length) {
+    blocks.push(
+      `<b>What needs you</b>\n` +
+        brief.actions.map((i) => `• ${tg(i.action)} <i>(${tg(i.from)})</i>`).join("\n"),
+    );
+  }
+  pushTgGroup(blocks, "Needs your reply", brief.needsReply);
+  pushTgGroup(blocks, "Urgent", brief.urgent);
+  pushTgGroup(blocks, "Waiting on others", brief.waiting);
+
+  if (brief.events.length) {
+    blocks.push(
+      `<b>Today &amp; coming up</b>\n` +
+        brief.events
+          .map((e) => `• ${tg(eventTime(e, timezone))} — ${tg(e.title)}`)
+          .join("\n"),
+    );
+  }
+
+  blocks.push(`<i>${brief.ignorableCount} you can ignore.</i>`);
+  return blocks.join("\n\n");
+}
+
+function pushTgGroup(blocks: string[], title: string, items: BriefItem[]): void {
+  if (!items.length) return;
+  blocks.push(
+    `<b>${tg(title)}</b>\n` +
+      items.map((i) => `• ${tg(i.subject)} — <i>${tg(i.from)}</i>`).join("\n"),
+  );
+}
+
 // --- HTML -----------------------------------------------------------------
 
 function esc(s: string): string {

@@ -46,6 +46,22 @@ The background worker now reads your recent Telegram chats into the same
 brief as your email — classified into *what needs you / can ignore* by your
 chosen AI. The Telegram card on the dashboard turns green.
 
+## Deliver your brief TO Telegram (optional)
+
+Separately from reading your chats, you can have your **daily brief arrive
+as a Telegram message** — so everything lands in one app.
+
+1. In Telegram, message **@BotFather** → `/newbot`, give it a name, and copy
+   the **bot token** it gives you.
+2. Add it to `.env` and restart:
+   ```bash
+   TELEGRAM_BOT_TOKEN="123456:ABC-DEF…"
+   docker compose up -d
+   ```
+3. **Send your new bot any message** (e.g. "hi") so it can reply to you.
+4. On the dashboard, click **Send to Telegram** — SignalDeck finds your chat
+   automatically and delivers the brief. After that it arrives every morning.
+
 ## Notes
 
 - **Privacy:** the session is encrypted at rest with your `ENCRYPTION_KEY`,

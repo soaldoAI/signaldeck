@@ -3,9 +3,18 @@
 // Telegram) land.
 
 import { getBrief } from "@/server/intelligence/brief";
-import { getTimezone } from "@/server/settings";
+import {
+  getTelegramChatId,
+  getTimezone,
+  setTelegramChatId,
+} from "@/server/settings";
 import { sendMail } from "@/server/mail/mailer";
-import { renderBriefing } from "./render";
+import { renderBriefing, renderBriefingTelegram } from "./render";
+import {
+  resolveChatId,
+  sendTelegramMessage,
+  telegramBotConfigured,
+} from "./telegram";
 
 export interface SendBriefingResult {
   ok: boolean;
@@ -31,4 +40,32 @@ export async function sendBriefing(
   return result.ok
     ? { ok: true, detail: `Briefing sent to ${recipient}` }
     : { ok: false, detail: result.error ?? "Send failed" };
+}
+
+/**
+ * Deliver the brief to Telegram. Resolves the chat id on first use (the
+ * user just needs to have messaged their bot once), then stores it.
+ */
+export async function sendBriefingToTelegram(
+  userId: string,
+): Promise<SendBriefingResult> {
+  if (!telegramBotConfigured()) {
+    return { ok: false, detail: "Telegram bot not configured" };
+  }
+
+  let chatId = await getTelegramChatId();
+  if (!chatId) {
+    const resolved = await resolveChatId();
+    if (!resolved) {
+      return {
+        ok: false,
+        detail: "Send your bot any message first, then try again.",
+      };
+    }
+    chatId = resolved;
+    await setTelegramChatId(chatId);
+  }
+
+  const [brief, timezone] = await Promise.all([getBrief(userId), getTimezone()]);
+  return sendTelegramMessage(chatId, renderBriefingTelegram(brief, timezone));
 }

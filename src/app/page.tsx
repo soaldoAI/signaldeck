@@ -4,7 +4,11 @@ import { getBrief, type BriefItem } from "@/server/intelligence/brief";
 import { getTimezone } from "@/server/settings";
 import { StatusDot } from "@/app/_components/status-dot";
 import { logout } from "@/app/login/actions";
-import { sendTestBriefing } from "@/app/_actions/briefing";
+import { telegramBotConfigured } from "@/server/delivery/telegram";
+import {
+  sendTestBriefing,
+  sendTestBriefingTelegram,
+} from "@/app/_actions/briefing";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +26,17 @@ const CONNECT_BANNER: Record<string, { tone: "ok" | "err"; text: string }> = {
     tone: "err",
     text: "Couldn't send the briefing — check SMTP settings.",
   },
+  "tg-sent": { tone: "ok", text: "Brief sent to Telegram." },
+  "tg-failed": {
+    tone: "err",
+    text: "Couldn't send to Telegram — set TELEGRAM_BOT_TOKEN and message your bot once (docs/telegram-setup.md).",
+  },
+};
+
+const BRIEFING_BANNER_KEY: Record<string, string> = {
+  failed: "briefing-failed",
+  "tg-sent": "tg-sent",
+  "tg-failed": "tg-failed",
 };
 
 export default async function Dashboard({
@@ -36,9 +51,12 @@ export default async function Dashboard({
     getTimezone(),
   ]);
   const sp = await searchParams;
-  const briefingKey = sp.briefing === "failed" ? "briefing-failed" : sp.briefing;
+  const briefingKey = sp.briefing
+    ? (BRIEFING_BANNER_KEY[sp.briefing] ?? sp.briefing)
+    : undefined;
   const banner = CONNECT_BANNER[sp.connect ?? briefingKey ?? ""];
   const analysing = brief.totalMessages - brief.classifiedCount;
+  const tgEnabled = telegramBotConfigured();
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-10">
@@ -79,6 +97,13 @@ export default async function Dashboard({
               <form action={sendTestBriefing}>
                 <button className="text-xs text-accent underline-offset-4 hover:underline">
                   Email me this brief
+                </button>
+              </form>
+            )}
+            {brief.classifiedCount > 0 && tgEnabled && (
+              <form action={sendTestBriefingTelegram}>
+                <button className="text-xs text-accent underline-offset-4 hover:underline">
+                  Send to Telegram
                 </button>
               </form>
             )}

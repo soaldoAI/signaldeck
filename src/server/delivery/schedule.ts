@@ -8,7 +8,8 @@ import {
   getTimezone,
   saveBriefingConfig,
 } from "@/server/settings";
-import { sendBriefing } from "./send";
+import { sendBriefing, sendBriefingToTelegram } from "./send";
+import { telegramBotConfigured } from "./telegram";
 
 /** Current local date (YYYY-MM-DD) and hour (0–23) in the given timezone. */
 function nowInTimezone(timezone: string): { date: string; hour: number } {
@@ -37,11 +38,22 @@ export async function maybeSendDailyBriefing(): Promise<void> {
   if (!user) return;
   const recipient = config.recipient || user.email;
 
-  const result = await sendBriefing(user.id, recipient);
-  if (result.ok) {
-    await saveBriefingConfig({ lastSentDate: date });
-    console.log(`[worker] daily briefing sent to ${recipient}`);
-  } else {
-    console.error(`[worker] daily briefing failed: ${result.detail}`);
+  // Deliver to every configured channel. Email is always available; Telegram
+  // when a bot is set up. (WhatsApp delivery is a future method on this same
+  // seam.) The day is marked sent if at least one channel succeeds.
+  const results: string[] = [];
+  let anyOk = false;
+
+  const email = await sendBriefing(user.id, recipient);
+  results.push(`email:${email.ok ? "ok" : email.detail}`);
+  anyOk ||= email.ok;
+
+  if (telegramBotConfigured()) {
+    const tg = await sendBriefingToTelegram(user.id);
+    results.push(`telegram:${tg.ok ? "ok" : tg.detail}`);
+    anyOk ||= tg.ok;
   }
+
+  if (anyOk) await saveBriefingConfig({ lastSentDate: date });
+  console.log(`[worker] daily briefing — ${results.join(", ")}`);
 }

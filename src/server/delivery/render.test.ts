@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderBriefing } from "./render";
+import { renderBriefing, renderBriefingTelegram } from "./render";
 import type { Brief, BriefItem } from "@/server/intelligence/brief";
 
 function item(over: Partial<BriefItem> = {}): BriefItem {
@@ -62,5 +62,23 @@ describe("renderBriefing", () => {
   it("includes the ignorable count", () => {
     const r = renderBriefing(baseBrief, "UTC");
     expect(r.text).toContain("8 messages you can ignore");
+  });
+});
+
+describe("renderBriefingTelegram", () => {
+  it("produces Telegram-HTML with bold headers and bullets", () => {
+    const s = renderBriefingTelegram(baseBrief, "Australia/Sydney");
+    expect(s).toContain("<b>What needs you</b>");
+    expect(s).toContain("• Sign the contract");
+    expect(s).toMatch(/09:00/);
+    expect(s.length).toBeLessThanOrEqual(4096);
+  });
+
+  it("escapes HTML in dynamic content", () => {
+    const s = renderBriefingTelegram(
+      { ...baseBrief, needsReply: [item({ subject: "<b>x</b>" })] },
+      "UTC",
+    );
+    expect(s).toContain("&lt;b&gt;x&lt;/b&gt;");
   });
 });
