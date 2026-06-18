@@ -109,6 +109,9 @@ model Message {
   snippet     String           @default("")
   receivedAt  DateTime
   createdAt   DateTime         @default(now())
+  /// When the user marked this handled; dismissed items drop out of the
+  /// brief (until newer activity in the thread brings it back).
+  dismissedAt DateTime?
   insight     MessageInsight?
 
   @@unique([accountId, externalId])

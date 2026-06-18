@@ -6,6 +6,7 @@ import { StatusDot } from "@/app/_components/status-dot";
 import { logout } from "@/app/login/actions";
 import { telegramBotConfigured } from "@/server/delivery/telegram";
 import {
+  markDone,
   sendTestBriefing,
   sendTestBriefingTelegram,
 } from "@/app/_actions/briefing";
@@ -248,7 +249,7 @@ function BriefList({
       </h3>
       <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {shown.map((i) => (
-          <li key={i.id}>
+          <li key={i.id} className="flex items-center gap-1">
             <ItemLink url={i.url}>
               <p className="text-sm font-medium">{i.action || i.subject}</p>
               <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
@@ -259,6 +260,14 @@ function BriefList({
                 </span>
               </p>
             </ItemLink>
+            <form action={markDone.bind(null, i.id)} className="shrink-0 pr-3">
+              <button
+                title="Mark done"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted transition hover:border-emerald-500 hover:text-emerald-600"
+              >
+                ✓
+              </button>
+            </form>
           </li>
         ))}
         {items.length > cap && (
@@ -286,13 +295,13 @@ function SourceBadge({ source }: { source: BriefItem["source"] }) {
 // Wraps a brief row in a link to the source message when one exists, so a
 // click jumps straight to the email; otherwise renders a plain row.
 function ItemLink({ url, children }: { url: string; children: React.ReactNode }) {
-  if (!url) return <div className="px-4 py-3">{children}</div>;
+  if (!url) return <div className="min-w-0 flex-1 px-4 py-3">{children}</div>;
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block px-4 py-3 transition hover:bg-border/40"
+      className="block min-w-0 flex-1 px-4 py-3 transition hover:bg-border/40"
     >
       {children}
     </a>

@@ -105,7 +105,12 @@ export async function getBrief(userId: string): Promise<Brief> {
     if (!byThread.has(key)) byThread.set(key, m);
   }
 
-  const items: BriefItem[] = [...byThread.values()].map((m) => ({
+  // Drop threads the user has marked done (i.e. whose latest message is
+  // dismissed). Newer activity un-dismisses them automatically, since the
+  // newer message becomes the thread's representative.
+  const items: BriefItem[] = [...byThread.values()]
+    .filter((m) => !m.dismissedAt)
+    .map((m) => ({
     id: m.id,
     subject: m.subject || "(no subject)",
     from: m.fromName || m.fromEmail,
