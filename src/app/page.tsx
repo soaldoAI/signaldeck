@@ -122,23 +122,13 @@ export default async function Dashboard({
           </div>
         ) : (
           <div className="flex flex-col gap-5">
-            {brief.actions.length > 0 && (
-              <BriefGroup title="What needs you" tone="accent">
-                {brief.actions.map((i) => (
-                  <li key={i.id}>
-                    <ItemLink url={i.url}>
-                      <p className="text-sm font-medium">{i.action}</p>
-                      <p className="truncate text-xs text-muted">
-                        {i.from} · {i.subject}
-                      </p>
-                    </ItemLink>
-                  </li>
-                ))}
-              </BriefGroup>
+            <BriefList title="Priority — needs you now" dot="#dc2626" items={brief.high} cap={10} />
+            <BriefList title="When you can" dot="#d97706" items={brief.medium} cap={8} />
+            <BriefList title="Can wait" dot="#a8a29e" items={brief.low} cap={5} />
+            <BriefList title="Waiting on others" dot="#a8a29e" items={brief.waiting} cap={5} />
+            {brief.high.length + brief.medium.length + brief.low.length + brief.waiting.length === 0 && (
+              <p className="text-sm text-muted">Nothing needs you right now. 🎉</p>
             )}
-            <BriefList title="Needs your reply" items={brief.needsReply} />
-            <BriefList title="Urgent" items={brief.urgent} />
-            <BriefList title="Waiting on others" items={brief.waiting} />
             <p className="text-xs text-muted">
               {brief.ignorableCount} message
               {brief.ignorableCount === 1 ? "" : "s"} you can ignore (newsletters,
@@ -234,22 +224,46 @@ export default async function Dashboard({
   );
 }
 
-function BriefList({ title, items }: { title: string; items: BriefItem[] }) {
+// One priority tier: a coloured-dot heading with a count, the items (each
+// linking to its source message), and a "+N more" line when capped.
+function BriefList({
+  title,
+  dot,
+  items,
+  cap = Infinity,
+}: {
+  title: string;
+  dot: string;
+  items: BriefItem[];
+  cap?: number;
+}) {
   if (items.length === 0) return null;
+  const shown = items.slice(0, cap);
   return (
-    <BriefGroup title={title}>
-      {items.map((i) => (
-        <li key={i.id}>
-          <ItemLink url={i.url}>
-            <p className="truncate text-sm font-medium">{i.subject}</p>
-            <p className="truncate text-xs text-muted">
-              {i.from}
-              {i.summary ? ` · ${i.summary}` : ""}
-            </p>
-          </ItemLink>
-        </li>
-      ))}
-    </BriefGroup>
+    <div className="flex flex-col gap-2">
+      <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+        <span className="h-2 w-2 rounded-full" style={{ background: dot }} aria-hidden />
+        {title}
+        <span className="text-muted/70">({items.length})</span>
+      </h3>
+      <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        {shown.map((i) => (
+          <li key={i.id}>
+            <ItemLink url={i.url}>
+              <p className="text-sm font-medium">{i.action || i.subject}</p>
+              <p className="truncate text-xs text-muted">
+                {i.from} · {i.source.icon} {i.source.name}
+              </p>
+            </ItemLink>
+          </li>
+        ))}
+        {items.length > cap && (
+          <li className="px-4 py-2 text-xs text-muted">
+            …and {items.length - cap} more
+          </li>
+        )}
+      </ul>
+    </div>
   );
 }
 
@@ -266,31 +280,6 @@ function ItemLink({ url, children }: { url: string; children: React.ReactNode })
     >
       {children}
     </a>
-  );
-}
-
-function BriefGroup({
-  title,
-  tone,
-  children,
-}: {
-  title: string;
-  tone?: "accent";
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <h3
-        className={`text-xs font-semibold uppercase tracking-wide ${
-          tone === "accent" ? "text-accent" : "text-muted"
-        }`}
-      >
-        {title}
-      </h3>
-      <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-        {children}
-      </ul>
-    </div>
   );
 }
 

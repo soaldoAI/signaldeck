@@ -10,10 +10,33 @@ export const CATEGORIES = [
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
+export const PRIORITIES = ["high", "medium", "low"] as const;
+export type Priority = (typeof PRIORITIES)[number];
+
 export interface Insight {
   category: Category;
+  priority: Priority;
   summary: string;
   action: string;
+}
+
+/** Normalise model-supplied priority to high | medium | low. */
+export function normalisePriority(raw: unknown): Priority {
+  const value = String(raw ?? "").toLowerCase().trim();
+  if ((PRIORITIES as readonly string[]).includes(value)) return value as Priority;
+  const synonyms: Record<string, Priority> = {
+    urgent: "high",
+    critical: "high",
+    important: "high",
+    normal: "medium",
+    med: "medium",
+    moderate: "medium",
+    minor: "low",
+    none: "low",
+    later: "low",
+    can_wait: "low",
+  };
+  return synonyms[value.replace(/[\s-]+/g, "_")] ?? "medium";
 }
 
 /** Normalise model-supplied categories (synonyms, casing) to our enum. */
@@ -55,6 +78,7 @@ export function parseInsight(raw: string): Insight {
       const obj = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
       return {
         category: normaliseCategory(obj.category),
+        priority: normalisePriority(obj.priority),
         summary: String(obj.summary ?? "").trim().slice(0, 200),
         action: String(obj.action ?? "").trim().slice(0, 200),
       };
@@ -62,5 +86,5 @@ export function parseInsight(raw: string): Insight {
       // fall through to default
     }
   }
-  return { category: "fyi", summary: "", action: "" };
+  return { category: "fyi", priority: "low", summary: "", action: "" };
 }

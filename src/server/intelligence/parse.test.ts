@@ -4,10 +4,11 @@ import { normaliseCategory, parseInsight } from "./parse";
 describe("parseInsight", () => {
   it("parses clean JSON", () => {
     const r = parseInsight(
-      '{"category":"needs_reply","summary":"Client asks for access","action":"Reply to Sam"}',
+      '{"category":"needs_reply","priority":"high","summary":"Client asks for access","action":"Reply to Sam"}',
     );
     expect(r).toEqual({
       category: "needs_reply",
+      priority: "high",
       summary: "Client asks for access",
       action: "Reply to Sam",
     });
@@ -36,9 +37,19 @@ describe("parseInsight", () => {
   it("falls back to fyi on unparseable output", () => {
     expect(parseInsight("I cannot classify this.")).toEqual({
       category: "fyi",
+      priority: "low",
       summary: "",
       action: "",
     });
+  });
+
+  it("normalises priority synonyms", () => {
+    expect(parseInsight('{"category":"urgent","priority":"critical"}').priority).toBe(
+      "high",
+    );
+    expect(parseInsight('{"category":"fyi","priority":"whatever"}').priority).toBe(
+      "medium",
+    );
   });
 
   it("clamps overly long fields", () => {

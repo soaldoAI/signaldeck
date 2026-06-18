@@ -124,6 +124,8 @@ model MessageInsight {
   message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   /// needs_reply | waiting | urgent | fyi | ignore
   category  String
+  /// high | medium | low — how much this needs the user's attention.
+  priority  String   @default("medium")
   /// One-line plain-language summary of what this message is.
   summary   String   @default("")
   /// The concrete next action for the user, or "" if none.

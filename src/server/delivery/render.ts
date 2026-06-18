@@ -1,5 +1,6 @@
-// Renders a Brief into an email (subject + plain text + HTML). Pure and
-// timezone-aware so it's unit-testable; no DB or network here.
+// Renders a Brief into an email (subject + plain text + HTML) and a Telegram
+// message. Organised by priority, source-labelled, and capped so it stays a
+// calm summary rather than a 60-item dump. Pure + timezone-aware.
 
 import type { Brief, BriefItem, BriefEvent } from "@/server/intelligence/brief";
 
@@ -9,19 +10,17 @@ export interface RenderedBriefing {
   html: string;
 }
 
-export function renderBriefing(brief: Brief, timezone: string): RenderedBriefing {
-  const today = new Date().toLocaleDateString("en-GB", {
-    timeZone: timezone,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const subject = `Your SignalDeck brief — ${today}`;
-  return {
-    subject,
-    text: renderText(brief, timezone, today),
-    html: renderHtml(brief, timezone, today),
-  };
+// Caps keep the brief calm — show the top of each tier, summarise the rest.
+const HIGH_CAP = 10;
+const MEDIUM_CAP = 6;
+const LOW_CAP = 4;
+const WAITING_CAP = 4;
+
+function primary(i: BriefItem): string {
+  return i.action || i.subject;
+}
+function secondary(i: BriefItem): string {
+  return `${i.from} · ${i.source.icon} ${i.source.name}`;
 }
 
 function eventTime(e: BriefEvent, tz: string): string {
@@ -41,46 +40,57 @@ function eventTime(e: BriefEvent, tz: string): string {
   });
 }
 
+export function renderBriefing(brief: Brief, timezone: string): RenderedBriefing {
+  const today = new Date().toLocaleDateString("en-GB", {
+    timeZone: timezone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return {
+    subject: `Your SignalDeck brief — ${today}`,
+    text: renderText(brief, timezone, today),
+    html: renderHtml(brief, timezone, today),
+  };
+}
+
 // --- Plain text -----------------------------------------------------------
 
 function renderText(brief: Brief, tz: string, today: string): string {
   const lines: string[] = [`SignalDeck — ${today}`, ""];
 
-  if (brief.actions.length) {
-    lines.push("WHAT NEEDS YOU");
-    for (const i of brief.actions) lines.push(`  • ${i.action}  (${i.from})`);
-    lines.push("");
-  }
-  pushTextGroup(lines, "NEEDS YOUR REPLY", brief.needsReply);
-  pushTextGroup(lines, "URGENT", brief.urgent);
-  pushTextGroup(lines, "WAITING ON OTHERS", brief.waiting);
+  textGroup(lines, "🔴 PRIORITY — NEEDS YOU NOW", brief.high, HIGH_CAP);
+  textGroup(lines, "🟡 WHEN YOU CAN", brief.medium, MEDIUM_CAP);
+  textGroup(lines, "⚪ CAN WAIT", brief.low, LOW_CAP);
+  textGroup(lines, "WAITING ON OTHERS", brief.waiting, WAITING_CAP);
 
   if (brief.events.length) {
     lines.push("TODAY & COMING UP");
-    for (const e of brief.events) {
-      lines.push(`  • ${eventTime(e, tz)} — ${e.title}`);
-    }
+    for (const e of brief.events) lines.push(`  • ${eventTime(e, tz)} — ${e.title}`);
     lines.push("");
   }
-
   lines.push(
     `${brief.ignorableCount} message${brief.ignorableCount === 1 ? "" : "s"} you can ignore.`,
   );
   return lines.join("\n");
 }
 
-function pushTextGroup(lines: string[], title: string, items: BriefItem[]): void {
+function textGroup(
+  lines: string[],
+  title: string,
+  items: BriefItem[],
+  cap = Infinity,
+): void {
   if (!items.length) return;
   lines.push(`${title} (${items.length})`);
-  for (const i of items) {
-    lines.push(`  • ${i.subject} — ${i.from}${i.summary ? ` — ${i.summary}` : ""}`);
+  for (const i of items.slice(0, cap)) {
+    lines.push(`  • ${primary(i)}  (${secondary(i)})`);
   }
+  if (items.length > cap) lines.push(`  …and ${items.length - cap} more`);
   lines.push("");
 }
 
-// --- Telegram -------------------------------------------------------------
-// Telegram's HTML mode supports a small tag subset (<b>, <i>, <a>) — no
-// lists or headings — so we build bold-header + bullet blocks.
+// --- Telegram (HTML subset: <b>, <i>) -------------------------------------
 
 function tg(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -95,38 +105,36 @@ export function renderBriefingTelegram(brief: Brief, timezone: string): string {
   });
   const blocks: string[] = [`<b>SignalDeck — ${tg(today)}</b>`];
 
-  if (brief.actions.length) {
-    blocks.push(
-      `<b>What needs you</b>\n` +
-        brief.actions.map((i) => `• ${tg(i.action)} <i>(${tg(i.from)})</i>`).join("\n"),
-    );
-  }
-  pushTgGroup(blocks, "Needs your reply", brief.needsReply);
-  pushTgGroup(blocks, "Urgent", brief.urgent);
-  pushTgGroup(blocks, "Waiting on others", brief.waiting);
+  tgGroup(blocks, "🔴 Priority — needs you now", brief.high, HIGH_CAP);
+  tgGroup(blocks, "🟡 When you can", brief.medium, MEDIUM_CAP);
+  tgGroup(blocks, "⚪ Can wait", brief.low, LOW_CAP);
+  tgGroup(blocks, "Waiting on others", brief.waiting, WAITING_CAP);
 
   if (brief.events.length) {
     blocks.push(
       `<b>Today &amp; coming up</b>\n` +
-        brief.events
-          .map((e) => `• ${tg(eventTime(e, timezone))} — ${tg(e.title)}`)
-          .join("\n"),
+        brief.events.map((e) => `• ${tg(eventTime(e, timezone))} — ${tg(e.title)}`).join("\n"),
     );
   }
-
   blocks.push(`<i>${brief.ignorableCount} you can ignore.</i>`);
   return blocks.join("\n\n");
 }
 
-function pushTgGroup(blocks: string[], title: string, items: BriefItem[]): void {
+function tgGroup(
+  blocks: string[],
+  title: string,
+  items: BriefItem[],
+  cap = Infinity,
+): void {
   if (!items.length) return;
-  blocks.push(
-    `<b>${tg(title)}</b>\n` +
-      items.map((i) => `• ${tg(i.subject)} — <i>${tg(i.from)}</i>`).join("\n"),
-  );
+  const rows = items
+    .slice(0, cap)
+    .map((i) => `• ${tg(primary(i))} <i>(${tg(secondary(i))})</i>`);
+  if (items.length > cap) rows.push(`<i>…and ${items.length - cap} more</i>`);
+  blocks.push(`<b>${tg(title)} (${items.length})</b>\n${rows.join("\n")}`);
 }
 
-// --- HTML -----------------------------------------------------------------
+// --- HTML email -----------------------------------------------------------
 
 function esc(s: string): string {
   return s
@@ -136,34 +144,52 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function renderHtml(brief: Brief, tz: string, today: string): string {
-  const sections: string[] = [];
+function htmlRow(i: BriefItem): string {
+  const link = i.url
+    ? ` <a href="${esc(i.url)}" style="color:#0f766e;font-size:12px">open →</a>`
+    : "";
+  return `<strong>${esc(primary(i))}</strong>${link}<br><span style="color:#78716c">${esc(secondary(i))}</span>`;
+}
 
-  if (brief.actions.length) {
-    sections.push(
-      htmlGroup(
-        "What needs you",
-        brief.actions.map(
-          (i) =>
-            `<strong>${esc(i.action)}</strong><br><span style="color:#78716c">${esc(i.from)} · ${esc(i.subject)}</span>${link(i)}`,
-        ),
-        "#0f766e",
-      ),
+function htmlGroup(
+  title: string,
+  items: BriefItem[],
+  color: string,
+  cap = Infinity,
+): string {
+  if (!items.length) return "";
+  const rows = items
+    .slice(0, cap)
+    .map(
+      (r) =>
+        `<li style="padding:10px 14px;border-bottom:1px solid #e7e5e4;font-size:14px;line-height:1.4">${htmlRow(r)}</li>`,
+    );
+  if (items.length > cap) {
+    rows.push(
+      `<li style="padding:8px 14px;font-size:12px;color:#a8a29e">…and ${items.length - cap} more</li>`,
     );
   }
-  sections.push(htmlItemGroup("Needs your reply", brief.needsReply));
-  sections.push(htmlItemGroup("Urgent", brief.urgent));
-  sections.push(htmlItemGroup("Waiting on others", brief.waiting));
+  return `<h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:${color};margin:18px 0 6px">${esc(title)} (${items.length})</h2>
+  <ul style="list-style:none;margin:0;padding:0;background:#fff;border:1px solid #e7e5e4;border-radius:12px;overflow:hidden">${rows.join("")}</ul>`;
+}
+
+function renderHtml(brief: Brief, tz: string, today: string): string {
+  const sections = [
+    htmlGroup("Priority — needs you now", brief.high, "#dc2626", HIGH_CAP),
+    htmlGroup("When you can", brief.medium, "#d97706", MEDIUM_CAP),
+    htmlGroup("Can wait", brief.low, "#78716c", LOW_CAP),
+    htmlGroup("Waiting on others", brief.waiting, "#78716c", WAITING_CAP),
+  ];
 
   if (brief.events.length) {
+    const evs = brief.events
+      .map(
+        (e) =>
+          `<li style="padding:10px 14px;border-bottom:1px solid #e7e5e4;font-size:14px"><strong>${esc(eventTime(e, tz))}</strong> — ${esc(e.title)}</li>`,
+      )
+      .join("");
     sections.push(
-      htmlGroup(
-        "Today & coming up",
-        brief.events.map(
-          (e) =>
-            `<strong>${esc(eventTime(e, tz))}</strong> — ${esc(e.title)}${e.location ? `<br><span style="color:#78716c">${esc(e.location)}</span>` : ""}`,
-        ),
-      ),
+      `<h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#78716c;margin:18px 0 6px">Today &amp; coming up</h2><ul style="list-style:none;margin:0;padding:0;background:#fff;border:1px solid #e7e5e4;border-radius:12px;overflow:hidden">${evs}</ul>`,
     );
   }
 
@@ -174,32 +200,4 @@ function renderHtml(brief: Brief, tz: string, today: string): string {
     ${sections.filter(Boolean).join("\n")}
     <p style="color:#a8a29e;font-size:12px;margin-top:24px">${brief.ignorableCount} message${brief.ignorableCount === 1 ? "" : "s"} you can ignore (newsletters, notifications).</p>
   </div></body></html>`;
-}
-
-function link(i: BriefItem): string {
-  return i.url
-    ? ` <a href="${esc(i.url)}" style="color:#0f766e;font-size:12px">open →</a>`
-    : "";
-}
-
-function htmlItemGroup(title: string, items: BriefItem[]): string {
-  if (!items.length) return "";
-  return htmlGroup(
-    title,
-    items.map(
-      (i) =>
-        `<strong>${esc(i.subject)}</strong>${link(i)}<br><span style="color:#78716c">${esc(i.from)}${i.summary ? ` · ${esc(i.summary)}` : ""}</span>`,
-    ),
-  );
-}
-
-function htmlGroup(title: string, rows: string[], color = "#78716c"): string {
-  const lis = rows
-    .map(
-      (r) =>
-        `<li style="padding:10px 14px;border-bottom:1px solid #e7e5e4;font-size:14px;line-height:1.4">${r}</li>`,
-    )
-    .join("");
-  return `<h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:${color};margin:18px 0 6px">${esc(title)}</h2>
-  <ul style="list-style:none;margin:0;padding:0;background:#fff;border:1px solid #e7e5e4;border-radius:12px;overflow:hidden">${lis}</ul>`;
 }

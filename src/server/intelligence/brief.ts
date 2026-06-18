@@ -1,10 +1,17 @@
 // Brief assembly: turns classified messages + upcoming events into the
-// structured "what matters today" view the dashboard (and, in Phase 9, the
-// briefing email) render. Pure data shaping over the DB — no AI here; the
-// thinking already happened in classify.ts.
+// organised "what matters today" view. Three jobs that make it calm:
+//   1. dedupe by thread (one back-and-forth = one item, not five),
+//   2. rank by the AI's priority (high / medium / low → "can wait"),
+//   3. label each item's source (Gmail, Telegram, …).
+// Pure data shaping over the DB — the thinking already happened in classify.
 
 import { prisma } from "@/server/db/client";
-import type { Category } from "./classify";
+import type { Category, Priority } from "./parse";
+
+export interface BriefSource {
+  name: string;
+  icon: string;
+}
 
 export interface BriefItem {
   id: string;
@@ -13,26 +20,10 @@ export interface BriefItem {
   summary: string;
   action: string;
   category: Category;
-  /** Deep link to open the original message in its source, or "". */
+  priority: Priority;
+  source: BriefSource;
+  /** Deep link to open the original message, or "". */
   url: string;
-}
-
-/** Build a link that opens the source message directly. */
-function messageUrl(
-  connectorId: string,
-  externalId: string,
-  threadId: string | null,
-  accountLabel: string,
-): string {
-  if (connectorId === "gmail") {
-    // authuser routes to the right account when several Google accounts are
-    // signed into the browser; #all opens the conversation.
-    const id = threadId || externalId;
-    return `https://mail.google.com/mail/?authuser=${encodeURIComponent(
-      accountLabel,
-    )}#all/${id}`;
-  }
-  return "";
 }
 
 export interface BriefEvent {
@@ -44,18 +35,46 @@ export interface BriefEvent {
 }
 
 export interface Brief {
-  needsReply: BriefItem[];
-  urgent: BriefItem[];
+  /** Actionable items, split by how much they need the user. */
+  high: BriefItem[];
+  medium: BriefItem[];
+  low: BriefItem[];
+  /** Things the user is waiting on someone else for. */
   waiting: BriefItem[];
-  /** Every concrete to-do extracted across all messages. */
-  actions: BriefItem[];
   events: BriefEvent[];
   totalMessages: number;
   classifiedCount: number;
   ignorableCount: number;
 }
 
-/** Build the brief for a user from their classified messages and events. */
+const SOURCES: Record<string, BriefSource> = {
+  gmail: { name: "Gmail", icon: "✉️" },
+  google_calendar: { name: "Calendar", icon: "📅" },
+  telegram: { name: "Telegram", icon: "✈️" },
+  slack: { name: "Slack", icon: "💬" },
+  whatsapp: { name: "WhatsApp", icon: "📲" },
+};
+
+function sourceFor(connectorId: string): BriefSource {
+  return SOURCES[connectorId] ?? { name: connectorId, icon: "•" };
+}
+
+function messageUrl(
+  connectorId: string,
+  externalId: string,
+  threadId: string | null,
+  accountLabel: string,
+): string {
+  if (connectorId === "gmail") {
+    const id = threadId || externalId;
+    return `https://mail.google.com/mail/?authuser=${encodeURIComponent(
+      accountLabel,
+    )}#all/${id}`;
+  }
+  return "";
+}
+
+/** Build the organised brief for a user. */
 export async function getBrief(userId: string): Promise<Brief> {
   const where = { account: { userId } };
 
@@ -74,24 +93,39 @@ export async function getBrief(userId: string): Promise<Brief> {
     }),
   ]);
 
-  const toItem = (m: (typeof messages)[number]): BriefItem => ({
+  // Dedupe by thread: messages are newest-first, so the first one seen for a
+  // thread is the latest — collapse the rest of that conversation into it.
+  const byThread = new Map<string, (typeof messages)[number]>();
+  for (const m of messages) {
+    const key = `${m.accountId}:${m.threadId ?? m.id}`;
+    if (!byThread.has(key)) byThread.set(key, m);
+  }
+
+  const items: BriefItem[] = [...byThread.values()].map((m) => ({
     id: m.id,
     subject: m.subject || "(no subject)",
     from: m.fromName || m.fromEmail,
     summary: m.insight?.summary ?? "",
     action: m.insight?.action ?? "",
     category: (m.insight?.category ?? "fyi") as Category,
+    priority: (m.insight?.priority ?? "medium") as Priority,
+    source: sourceFor(m.connectorId),
     url: messageUrl(m.connectorId, m.externalId, m.threadId, m.account.label),
-  });
+  }));
 
-  const items = messages.map(toItem);
-  const byCategory = (c: Category) => items.filter((i) => i.category === c);
+  // Actionable = needs the user to do/answer something.
+  const actionable = (i: BriefItem) =>
+    i.category === "needs_reply" ||
+    i.category === "urgent" ||
+    i.action.trim().length > 0;
+
+  const acts = items.filter(actionable);
 
   return {
-    needsReply: byCategory("needs_reply"),
-    urgent: byCategory("urgent"),
-    waiting: byCategory("waiting"),
-    actions: items.filter((i) => i.action.trim().length > 0),
+    high: acts.filter((i) => i.priority === "high"),
+    medium: acts.filter((i) => i.priority === "medium"),
+    low: acts.filter((i) => i.priority === "low"),
+    waiting: items.filter((i) => i.category === "waiting"),
     events: events.map((e) => ({
       id: e.id,
       title: e.title,
@@ -102,7 +136,7 @@ export async function getBrief(userId: string): Promise<Brief> {
     totalMessages,
     classifiedCount,
     ignorableCount: items.filter(
-      (i) => i.category === "fyi" || i.category === "ignore",
+      (i) => !actionable(i) && i.category !== "waiting",
     ).length,
   };
 }

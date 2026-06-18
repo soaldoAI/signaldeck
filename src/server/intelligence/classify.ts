@@ -11,11 +11,12 @@ import type { Message } from "@/generated/prisma/client";
 export { CATEGORIES, type Category, type Insight } from "./parse";
 
 const SYSTEM_PROMPT = `You are SignalDeck, an AI chief of staff for a busy professional.
-For each message, decide how it should be triaged and what (if anything) the user must do.
+For each message, decide how it should be triaged, how much it matters, and what (if anything) the user must do.
 
 Reply with ONLY a JSON object, no prose, no markdown fences:
 {
   "category": one of "needs_reply" | "waiting" | "urgent" | "fyi" | "ignore",
+  "priority": one of "high" | "medium" | "low",
   "summary": a single short sentence describing what this message is,
   "action": the one concrete next action the user should take, or "" if none
 }
@@ -26,6 +27,11 @@ Category guide:
 - "waiting": the user is waiting on someone else; no action needed now.
 - "fyi": worth knowing, but no action required.
 - "ignore": newsletters, promotions, automated notifications, noise.
+
+Priority guide (be selective — most things are NOT high):
+- "high": real consequences if missed today — a person blocked on you, a deadline, money, a contract, a key relationship.
+- "medium": matters, but can wait a day or two.
+- "low": routine, FYI, or noise.
 
 Keep summary under 15 words. Keep action a short imperative ("Reply to Sarah about the contract") or "".`;
 
@@ -79,6 +85,7 @@ export async function classifyPendingMessages(
         data: {
           messageId: message.id,
           category: insight.category,
+          priority: insight.priority,
           summary: insight.summary,
           action: insight.action,
           model: provider.model,
